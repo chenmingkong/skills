@@ -1,22 +1,36 @@
 ---
 name: mysql-to-gaussdb
-description: 查看 MySQL 到 GaussDB 的迁移指南，包含 SQL 转换规则、数据类型映射和配置示例
+description: 将 Spring Boot 项目从 MySQL 迁移到 GaussDB，自动转换依赖、配置和 SQL 语法
+argument-hint: "[项目目录]"
 ---
 
-# MySQL to GaussDB 迁移指南
+# MySQL to GaussDB 迁移
 
-## Maven 依赖
+自动扫描并转换 Spring Boot 项目中的 MySQL 代码为 GaussDB 兼容代码。
 
-移除 MySQL:
+## 执行步骤
+
+### 1. 扫描文件
+
+```
+**/pom.xml, **/build.gradle          # 依赖配置
+**/application*.yml, **/application*.properties  # 数据库配置
+**/*Mapper.xml                        # MyBatis 映射
+**/*.sql                              # SQL 脚本
+**/*Repository.java, **/*Dao.java    # @Query 原生 SQL
+```
+
+### 2. 修改依赖
+
+**pom.xml:**
 ```xml
+<!-- 删除 -->
 <dependency>
     <groupId>mysql</groupId>
     <artifactId>mysql-connector-java</artifactId>
 </dependency>
-```
 
-添加 GaussDB:
-```xml
+<!-- 添加 -->
 <dependency>
     <groupId>org.opengauss</groupId>
     <artifactId>opengauss-jdbc</artifactId>
@@ -24,42 +38,54 @@ description: 查看 MySQL 到 GaussDB 的迁移指南，包含 SQL 转换规则�
 </dependency>
 ```
 
-## 配置修改
-
-### application.yml
-```yaml
-spring:
-  datasource:
-    driver-class-name: org.opengauss.Driver
-    url: jdbc:opengauss://localhost:5432/mydb?currentSchema=public
-    username: gaussdb_user
-    password: password
-  jpa:
-    database-platform: org.hibernate.dialect.PostgreSQLDialect
+**build.gradle:**
+```groovy
+// 删除: implementation 'mysql:mysql-connector-java'
+// 添加:
+implementation 'org.opengauss:opengauss-jdbc:5.0.0'
 ```
 
-## SQL 语法转换
+### 3. 修改配置
+
+| 配置项 | MySQL | GaussDB |
+|--------|-------|---------|
+| driver-class-name | `com.mysql.cj.jdbc.Driver` | `org.opengauss.Driver` |
+| url | `jdbc:mysql://host:3306/db` | `jdbc:opengauss://host:5432/db?currentSchema=public` |
+| database-platform | `MySQL8Dialect` | `org.hibernate.dialect.PostgreSQLDialect` |
+
+### 4. SQL 语法转换
 
 | MySQL | GaussDB |
 |-------|---------|
-| `` `column` `` | `"column"` 或直接 column |
-| `AUTO_INCREMENT` | `SERIAL` / `BIGSERIAL` |
+| `` `column` `` | `column` 或 `"column"` |
 | `IFNULL(a, b)` | `COALESCE(a, b)` |
 | `IF(cond, a, b)` | `CASE WHEN cond THEN a ELSE b END` |
 | `DATE_FORMAT(d, '%Y-%m-%d')` | `TO_CHAR(d, 'YYYY-MM-DD')` |
+| `DATE_FORMAT(d, '%Y-%m-%d %H:%i:%s')` | `TO_CHAR(d, 'YYYY-MM-DD HH24:MI:SS')` |
 | `LIMIT 5, 10` | `LIMIT 10 OFFSET 5` |
 | `ON DUPLICATE KEY UPDATE` | `ON CONFLICT (key) DO UPDATE SET` |
+| `GROUP_CONCAT(col)` | `STRING_AGG(col::text, ',')` |
+| `UNIX_TIMESTAMP()` | `EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)::INTEGER` |
+| `FROM_UNIXTIME(ts)` | `TO_TIMESTAMP(ts)` |
+
+### 5. DDL 类型转换
+
+| MySQL | GaussDB |
+|-------|---------|
+| `BIGINT AUTO_INCREMENT` | `BIGSERIAL` |
+| `INT AUTO_INCREMENT` | `SERIAL` |
 | `TINYINT(1)` | `BOOLEAN` |
+| `TINYINT` | `SMALLINT` |
 | `DATETIME` | `TIMESTAMP` |
-| `LONGTEXT` | `TEXT` |
-| `BLOB` | `BYTEA` |
+| `DOUBLE` | `DOUBLE PRECISION` |
+| `BLOB` / `LONGBLOB` | `BYTEA` |
+| `LONGTEXT` / `MEDIUMTEXT` | `TEXT` |
 
-## 驱动类名映射
+删除 MySQL 特有语法: `ENGINE=InnoDB`, `DEFAULT CHARSET=utf8mb4`, `UNSIGNED`, `AUTO_INCREMENT=N`
 
-- `com.mysql.jdbc.Driver` → `org.opengauss.Driver`
-- `com.mysql.cj.jdbc.Driver` → `org.opengauss.Driver`
+### 6. 验证
 
-## Hibernate 方言
-
-- `org.hibernate.dialect.MySQL5Dialect` → `org.hibernate.dialect.PostgreSQLDialect`
-- `org.hibernate.dialect.MySQL8Dialect` → `org.hibernate.dialect.PostgreSQLDialect`
+```bash
+mvn clean compile  # 检查编译
+mvn test           # 运行测试
+```

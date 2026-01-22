@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(dir:*)",
+      "Bash(powershell -Command \"Get-ChildItem -Path ''D:\\\\claude\\\\guass'' -Recurse -File | Select-Object FullName | head -100\")",
+      "Bash(powershell -Command \"Get-ChildItem -Path ''D:\\\\'' -Directory | Select-Object Name | head -20\")",
+      "Bash(powershell -Command:*)",
+      "Bash(del \"D:\\\\claude\\\\guass\\\\mysql-to-gaussdb-migration-guide.md\")",
+      "Bash(git init:*)",
+      "Bash(git remote add:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git branch:*)",
+      "Bash(git push:*)",
+      "Bash(git remote set-url:*)"
+    ]
+  }
+}
