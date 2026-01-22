@@ -83,9 +83,97 @@ implementation 'org.opengauss:opengauss-jdbc:5.0.0'
 
 删除 MySQL 特有语法: `ENGINE=InnoDB`, `DEFAULT CHARSET=utf8mb4`, `UNSIGNED`, `AUTO_INCREMENT=N`
 
-### 6. 验证
+### 6. 迁移完整性校验
+
+转换完成后，执行以下检查确保没有遗漏：
+
+#### 6.1 扫描残留 MySQL 语法
+
+```bash
+# 检查是否还有 MySQL 驱动引用
+grep -r "mysql-connector-java" --include="pom.xml" --include="build.gradle"
+grep -r "com.mysql" --include="*.java" --include="*.xml" --include="*.yml" --include="*.properties"
+
+# 检查是否还有 MySQL JDBC URL
+grep -r "jdbc:mysql" --include="*.yml" --include="*.properties" --include="*.xml"
+
+# 检查是否还有 MySQL 方言
+grep -r "MySQLDialect\|MySQL5Dialect\|MySQL8Dialect" --include="*.yml" --include="*.properties" --include="*.java"
+
+# 检查是否还有反引号（MySQL 特有）
+grep -r "\`" --include="*.xml" --include="*.sql"
+
+# 检查未转换的 MySQL 函数
+grep -rE "IFNULL|DATE_FORMAT|GROUP_CONCAT|UNIX_TIMESTAMP|FROM_UNIXTIME" --include="*.xml" --include="*.sql" --include="*.java"
+
+# 检查 MySQL 特有的 DDL 语法
+grep -rE "AUTO_INCREMENT|ENGINE=|UNSIGNED|CHARSET=" --include="*.sql"
+
+# 检查 MySQL 分页语法 (LIMIT offset, count)
+grep -rE "LIMIT\s+\d+\s*,\s*\d+" --include="*.xml" --include="*.sql"
+
+# 检查 ON DUPLICATE KEY
+grep -r "ON DUPLICATE KEY" --include="*.xml" --include="*.sql" --include="*.java"
+```
+
+#### 6.2 校验清单
+
+| 检查项 | 命令 | 期望结果 |
+|--------|------|----------|
+| MySQL 驱动 | `grep -r "mysql-connector-java"` | 无匹配 |
+| MySQL 驱动类 | `grep -r "com.mysql"` | 无匹配 |
+| JDBC URL | `grep -r "jdbc:mysql"` | 无匹配 |
+| MySQL 方言 | `grep -r "MySQLDialect"` | 无匹配 |
+| 反引号 | `grep -r "\\\`" *.xml *.sql` | 无匹配 |
+| IFNULL 函数 | `grep -r "IFNULL"` | 无匹配 |
+| DATE_FORMAT | `grep -r "DATE_FORMAT"` | 无匹配 |
+| AUTO_INCREMENT | `grep -r "AUTO_INCREMENT"` | 无匹配 |
+| ON DUPLICATE KEY | `grep -r "ON DUPLICATE KEY"` | 无匹配 |
+
+#### 6.3 生成校验报告
+
+扫描完成后输出报告：
+
+```
+============ MySQL to GaussDB 迁移校验报告 ============
+
+✅ 依赖配置
+   - pom.xml: 已切换到 opengauss-jdbc
+   - 无残留 MySQL 驱动引用
+
+✅ 数据库配置
+   - driver-class-name: org.opengauss.Driver
+   - url: jdbc:opengauss://...
+   - dialect: PostgreSQLDialect
+
+⚠️ 待检查项（如有）
+   - src/main/resources/mapper/UserMapper.xml:45 - 发现反引号
+   - src/main/resources/db/init.sql:23 - 发现 AUTO_INCREMENT
+
+❌ 未通过项（如有）
+   - 仍存在 MySQL 驱动依赖
+   - 仍使用 jdbc:mysql URL
+
+============ 统计 ============
+扫描文件: XX 个
+已转换: XX 处
+待处理: XX 处
+```
+
+### 7. 编译与测试
 
 ```bash
 mvn clean compile  # 检查编译
 mvn test           # 运行测试
 ```
+
+### 8. 常见遗漏项
+
+| 遗漏类型 | 常见位置 | 解决方法 |
+|----------|----------|----------|
+| 硬编码 SQL | `@Query` 注解 | 搜索 `nativeQuery = true` |
+| 动态 SQL | MyBatis `<if>` 标签内 | 逐个检查 Mapper.xml |
+| 测试代码 | `src/test/**` | 同步修改测试配置 |
+| 多环境配置 | `application-dev.yml` 等 | 检查所有 profile 配置 |
+| 数据库初始化 | `schema.sql`, `data.sql` | Flyway/Liquibase 脚本 |
+| 存储过程 | `*.sql` | 需手动重写，语法差异大 |
