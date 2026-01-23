@@ -233,7 +233,49 @@ CREATE TABLE order_item (
 );
 ```
 
-## 9. DDL 校验清单
+## 9. 迁移完整性校验
+
+转换完成后，执行以下检查确保没有遗漏。
+
+### 9.1 扫描残留 MySQL 语法
+
+```bash
+# ========== DDL 语法检查 ==========
+# 检查 AUTO_INCREMENT
+grep -rE "AUTO_INCREMENT" --include="*.sql"
+
+# 检查存储引擎
+grep -rE "ENGINE\s*=" --include="*.sql"
+
+# 检查 UNSIGNED
+grep -rE "\bUNSIGNED\b" --include="*.sql"
+
+# 检查字符集和排序规则
+grep -rE "CHARSET\s*=|COLLATE\s*=" --include="*.sql"
+
+# 检查 ON UPDATE CURRENT_TIMESTAMP
+grep -rE "ON\s+UPDATE\s+CURRENT_TIMESTAMP" --include="*.sql"
+
+# 检查反引号（MySQL 特有）
+grep -r "\`" --include="*.sql"
+
+# 检查零值时间默认值
+grep -rE "DEFAULT\s*'0+(-0+){2}" --include="*.sql"
+
+# 检查内联 COMMENT（需转为 COMMENT ON COLUMN）
+grep -rE "COMMENT\s*'" --include="*.sql"
+
+# 检查 VARCHAR（应转为 NVARCHAR2）
+grep -rE "\bVARCHAR\s*\(" --include="*.sql"
+
+# 检查索引名是否包含表名前缀
+grep -rE "CREATE\s+(UNIQUE\s+)?INDEX\s+idx_" --include="*.sql"
+
+# 检查 ROW_FORMAT
+grep -rE "ROW_FORMAT\s*=" --include="*.sql"
+```
+
+### 9.2 校验清单
 
 | 检查项 | 命令 | 期望结果 |
 |--------|------|----------|
@@ -248,6 +290,51 @@ CREATE TABLE order_item (
 | 内联 COMMENT | `grep -rE "COMMENT\s*'"` | 无匹配 |
 | VARCHAR | `grep -rE "\bVARCHAR\s*\("` | 无匹配（应为 NVARCHAR2） |
 | 索引名前缀 | `grep -rE "CREATE\s+INDEX\s+idx_"` | 应含表名前缀 |
+
+### 9.3 生成校验报告
+
+扫描完成后输出报告：
+
+```
+============ DDL 迁移校验报告 ============
+
+✅ 数据类型
+   - VARCHAR 已转为 NVARCHAR2
+   - DATETIME/TIMESTAMP 已转为 timestamp(0)
+   - TINYINT 已转为 int2/BOOLEAN
+   - DOUBLE 已转为 float8/numeric
+
+✅ 自增列
+   - AUTO_INCREMENT 已转为序列
+   - 序列起始值已正确设置
+
+✅ 约束和索引
+   - 索引名已添加表名前缀
+   - 主键和外键语法正确
+
+✅ 注释
+   - 内联 COMMENT 已转为 COMMENT ON COLUMN
+   - 表注释已转为 COMMENT ON TABLE
+
+✅ 已删除 MySQL 特有语法
+   - 无 ENGINE=
+   - 无 CHARSET=
+   - 无 UNSIGNED
+   - 无 ON UPDATE CURRENT_TIMESTAMP
+
+⚠️ 待人工检查项（如有）
+   - schema.sql:45 - 发现反引号
+   - migration/V1.sql:23 - 发现 AUTO_INCREMENT
+
+❌ 未通过项（如有）
+   - 仍存在 VARCHAR（应为 NVARCHAR2）
+   - 仍存在内联 COMMENT
+
+============ 统计 ============
+扫描文件: XX 个
+已转换: XX 处
+待处理: XX 处
+```
 
 ## 10. 完整转换示例
 

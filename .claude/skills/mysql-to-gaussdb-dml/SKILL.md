@@ -226,14 +226,88 @@ ON CONFLICT (id) DO UPDATE SET score = EXCLUDED.score;
 
 这些是 XML 的标准转义，在 MyBatis Mapper XML 中用于比较运算符，必须保留。
 
-## 9. DML 校验清单
+## 9. 迁移完整性校验
+
+转换完成后，执行以下检查确保没有遗漏。
+
+### 9.1 扫描残留 MySQL 语法
+
+```bash
+# ========== 标识符和字符串检查 ==========
+# 检查反引号（MySQL 特有）
+grep -r "\`" --include="*.xml" --include="*.java"
+
+# 检查双引号字符串值（GaussDB 双引号仅用于标识符）
+grep -rE "=\s*\"[^\"]+\"" --include="*.xml" --include="*.java"
+
+# ========== 通用函数检查 ==========
+# 检查 IFNULL（应为 COALESCE）
+grep -r "IFNULL" --include="*.xml" --include="*.java"
+
+# 检查 IF(（应为 CASE WHEN）
+grep -rE "\bIF\s*\(" --include="*.xml" --include="*.java"
+
+# 检查 GROUP_CONCAT（应为 STRING_AGG）
+grep -r "GROUP_CONCAT" --include="*.xml" --include="*.java"
+
+# 检查 JSON_OBJECT（应为 json_build_object）
+grep -r "JSON_OBJECT" --include="*.xml" --include="*.java"
+
+# 检查 ANY_VALUE（应为 MAX）
+grep -r "ANY_VALUE" --include="*.xml" --include="*.java"
+
+# 检查 ON DUPLICATE KEY（应为 ON CONFLICT）
+grep -r "ON DUPLICATE KEY" --include="*.xml" --include="*.java"
+
+# ========== 日期函数检查（重点） ==========
+# 检查 DATE_FORMAT（应为 TO_CHAR）
+grep -r "DATE_FORMAT" --include="*.xml" --include="*.java"
+
+# 检查 STR_TO_DATE（应为 TO_DATE/TO_TIMESTAMP）
+grep -r "STR_TO_DATE" --include="*.xml" --include="*.java"
+
+# 检查 UNIX_TIMESTAMP
+grep -r "UNIX_TIMESTAMP" --include="*.xml" --include="*.java"
+
+# 检查 FROM_UNIXTIME（应为 TO_TIMESTAMP）
+grep -r "FROM_UNIXTIME" --include="*.xml" --include="*.java"
+
+# 检查 CURDATE（应为 CURRENT_DATE）
+grep -r "CURDATE" --include="*.xml" --include="*.java"
+
+# 检查 CURTIME（应为 CURRENT_TIME）
+grep -r "CURTIME" --include="*.xml" --include="*.java"
+
+# 检查 DATE_ADD/DATE_SUB
+grep -rE "DATE_ADD|DATE_SUB" --include="*.xml" --include="*.java"
+
+# 检查 DATEDIFF
+grep -r "DATEDIFF" --include="*.xml" --include="*.java"
+
+# 检查 TIMESTAMPDIFF
+grep -r "TIMESTAMPDIFF" --include="*.xml" --include="*.java"
+
+# 检查日期提取函数 YEAR/MONTH/DAY/HOUR/MINUTE/SECOND
+grep -rE "\b(YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)\s*\(" --include="*.xml" --include="*.java"
+
+# ========== 需人工检查 ==========
+# 检查 GROUP BY 语句（确认非聚合列已处理）
+grep -rE "GROUP\s+BY" --include="*.xml" --include="*.java"
+
+# 检查 SELECT EXISTS（如需返回 0/1 需转换）
+grep -rE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
+```
+
+### 9.2 校验清单
 
 | 检查项 | 命令 | 期望结果 |
 |--------|------|----------|
 | 反引号 | `grep -r "\`"` | 无匹配 |
 | 双引号字符串 | `grep -rE "=\"[^\"]+\""` | 无匹配 |
 | IFNULL | `grep -r "IFNULL"` | 无匹配 |
+| IF( | `grep -rE "\bIF\s*\("` | 无匹配 |
 | DATE_FORMAT | `grep -r "DATE_FORMAT"` | 无匹配 |
+| STR_TO_DATE | `grep -r "STR_TO_DATE"` | 无匹配 |
 | UNIX_TIMESTAMP | `grep -r "UNIX_TIMESTAMP"` | 无匹配 |
 | FROM_UNIXTIME | `grep -r "FROM_UNIXTIME"` | 无匹配 |
 | CURDATE | `grep -r "CURDATE"` | 无匹配 |
@@ -242,15 +316,57 @@ ON CONFLICT (id) DO UPDATE SET score = EXCLUDED.score;
 | DATE_SUB | `grep -r "DATE_SUB"` | 无匹配 |
 | DATEDIFF | `grep -r "DATEDIFF"` | 无匹配 |
 | TIMESTAMPDIFF | `grep -r "TIMESTAMPDIFF"` | 无匹配 |
-| STR_TO_DATE | `grep -r "STR_TO_DATE"` | 无匹配 |
-| YEAR( | `grep -r "YEAR("` | 无匹配 |
-| MONTH( | `grep -r "MONTH("` | 无匹配 |
-| DAY( | `grep -r "DAY("` | 无匹配 |
+| YEAR/MONTH/DAY | `grep -rE "\b(YEAR\|MONTH\|DAY)\s*\("` | 无匹配 |
 | GROUP_CONCAT | `grep -r "GROUP_CONCAT"` | 无匹配 |
 | JSON_OBJECT | `grep -r "JSON_OBJECT"` | 无匹配 |
 | ANY_VALUE | `grep -r "ANY_VALUE"` | 无匹配 |
 | ON DUPLICATE KEY | `grep -r "ON DUPLICATE KEY"` | 无匹配 |
 | GROUP BY | `grep -rE "GROUP BY"` | 需人工检查非聚合列 |
+| SELECT EXISTS | `grep -rE "SELECT\s+EXISTS"` | 需人工检查返回值 |
+
+### 9.3 生成校验报告
+
+扫描完成后输出报告：
+
+```
+============ DML 迁移校验报告 ============
+
+✅ 标识符和字符串
+   - 反引号已替换为双引号
+   - 字符串值已使用单引号
+
+✅ 通用函数
+   - IFNULL 已转为 COALESCE
+   - IF() 已转为 CASE WHEN
+   - GROUP_CONCAT 已转为 STRING_AGG
+   - JSON_OBJECT 已转为 json_build_object
+
+✅ 日期时间函数
+   - DATE_FORMAT 已转为 TO_CHAR
+   - STR_TO_DATE 已转为 TO_DATE/TO_TIMESTAMP
+   - CURDATE 已转为 CURRENT_DATE
+   - DATE_ADD/DATE_SUB 已转为 INTERVAL 运算
+   - TIMESTAMPDIFF 已转为 EXTRACT
+   - YEAR/MONTH/DAY 已转为 EXTRACT
+
+✅ 插入语句
+   - ON DUPLICATE KEY 已转为 ON CONFLICT
+
+⚠️ 待人工检查项（如有）
+   - GROUP BY 语句：确认非聚合列已用 MAX() 包装
+   - SELECT EXISTS：如需返回 0/1 需转为 (EXISTS(...))::int
+   - UserMapper.xml:45 - 发现反引号
+   - OrderMapper.xml:78 - 发现 DATE_FORMAT
+
+❌ 未通过项（如有）
+   - 仍存在 IFNULL 函数
+   - 仍存在 DATE_FORMAT 函数
+
+============ 统计 ============
+扫描文件: XX 个
+已转换: XX 处
+待处理: XX 处
+```
 
 ## 10. 完整转换示例
 
