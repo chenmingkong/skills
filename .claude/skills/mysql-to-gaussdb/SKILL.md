@@ -53,6 +53,32 @@ implementation 'org.opengauss:opengauss-jdbc:6.0.0-htrunk3.csi.gaussdb_kernel.op
 | url | `jdbc:mysql://host:3306/db` | `jdbc:opengauss://host:5432/db?currentSchema=public` |
 | database-platform | `MySQL8Dialect` | `org.hibernate.dialect.PostgreSQLDialect` |
 
+**PageHelper 分页配置：**
+
+application.yml 添加：
+```yaml
+pagehelper:
+  helper-dialect: postgresql
+  reasonable: true
+  support-methods-argument: true
+```
+
+application.properties 添加：
+```properties
+pagehelper.helper-dialect=postgresql
+pagehelper.reasonable=true
+pagehelper.support-methods-argument=true
+```
+
+mybatis-config.xml（如配置了 plugins）添加：
+```xml
+<plugins>
+    <plugin interceptor="com.github.pagehelper.PageInterceptor">
+        <property name="helperDialect" value="postgresql"/>
+    </plugin>
+</plugins>
+```
+
 ### 4. SQL 语法转换
 
 | MySQL | GaussDB |
