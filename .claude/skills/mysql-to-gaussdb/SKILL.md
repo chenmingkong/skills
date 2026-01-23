@@ -68,8 +68,8 @@ implementation 'org.opengauss:opengauss-jdbc:5.0.0'
 | `FROM_UNIXTIME(ts)` | `TO_TIMESTAMP(ts)` |
 | `CURDATE()` | `CURRENT_DATE` |
 | `DATE(CURDATE()+INTERVAL 3 DAY)` | `TO_CHAR(CURRENT_DATE + INTERVAL '3 DAY', 'YYYY-MM-DD')` |
-| `DATE_ADD(date, INTERVAL n DAY)` | `date + INTERVAL 'n DAY'` |
-| `DATE_SUB(date, INTERVAL n DAY)` | `date - INTERVAL 'n DAY'` |
+| `DATE_ADD(date, INTERVAL n DAY)` | `TO_CHAR(CAST(date AS TIMESTAMP) + INTERVAL 'n DAY', 'YYYY-MM-DD')` |
+| `DATE_SUB(date, INTERVAL n DAY)` | `TO_CHAR(CAST(date AS TIMESTAMP) - INTERVAL 'n DAY', 'YYYY-MM-DD')` |
 
 **GaussDB 兼容的 MySQL 语法（无需转换）：**
 - `LIMIT offset, count` - 分页语法直接兼容
