@@ -120,6 +120,26 @@ SELECT setval('table_name_id_seq', COALESCE((SELECT MAX(id) FROM table_name), 0)
 ALTER TABLE table_name ALTER COLUMN id SET DEFAULT nextval('table_name_id_seq');
 ```
 
+**COMMENT 注释转换：**
+
+GaussDB 不支持在字段定义中声明 COMMENT，需要单独使用 `COMMENT ON COLUMN`：
+
+```sql
+-- MySQL
+CREATE TABLE user (
+    id BIGINT COMMENT '用户ID',
+    name VARCHAR(50) COMMENT '用户名'
+);
+
+-- GaussDB
+CREATE TABLE user (
+    id BIGINT,
+    name VARCHAR(50)
+);
+COMMENT ON COLUMN user.id IS '用户ID';
+COMMENT ON COLUMN user.name IS '用户名';
+```
+
 删除 MySQL 特有语法: `ENGINE=InnoDB`, `DEFAULT CHARSET=utf8mb4`, `UNSIGNED`, `AUTO_INCREMENT=N`
 
 ### 6. 迁移完整性校验
@@ -150,6 +170,9 @@ grep -rE "IFNULL|DATE_FORMAT|GROUP_CONCAT|UNIX_TIMESTAMP|FROM_UNIXTIME|CURDATE|D
 
 # 检查 MySQL 特有的 DDL 语法
 grep -rE "AUTO_INCREMENT|ENGINE=|UNSIGNED|CHARSET=" --include="*.sql"
+
+# 检查字段定义中的 COMMENT（需转为 COMMENT ON COLUMN）
+grep -rE "COMMENT\s*'" --include="*.sql"
 
 # 检查 ON DUPLICATE KEY
 grep -r "ON DUPLICATE KEY" --include="*.xml" --include="*.sql" --include="*.java"
