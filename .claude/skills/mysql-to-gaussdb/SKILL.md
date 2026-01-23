@@ -62,11 +62,14 @@ implementation 'org.opengauss:opengauss-jdbc:5.0.0'
 | `IF(cond, a, b)` | `CASE WHEN cond THEN a ELSE b END` |
 | `DATE_FORMAT(d, '%Y-%m-%d')` | `TO_CHAR(d, 'YYYY-MM-DD')` |
 | `DATE_FORMAT(d, '%Y-%m-%d %H:%i:%s')` | `TO_CHAR(d, 'YYYY-MM-DD HH24:MI:SS')` |
-| `LIMIT 5, 10` | `LIMIT 10 OFFSET 5` |
 | `ON DUPLICATE KEY UPDATE` | `ON CONFLICT (key) DO UPDATE SET` |
 | `GROUP_CONCAT(col)` | `STRING_AGG(col::text, ',')` |
 | `UNIX_TIMESTAMP()` | `EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)::INTEGER` |
 | `FROM_UNIXTIME(ts)` | `TO_TIMESTAMP(ts)` |
+
+**GaussDB 兼容的 MySQL 语法（无需转换）：**
+- `LIMIT offset, count` - 分页语法直接兼容
+- `LIMIT count` - 直接兼容
 
 ### 5. DDL 类型转换
 
@@ -108,9 +111,6 @@ grep -rE "IFNULL|DATE_FORMAT|GROUP_CONCAT|UNIX_TIMESTAMP|FROM_UNIXTIME" --includ
 
 # 检查 MySQL 特有的 DDL 语法
 grep -rE "AUTO_INCREMENT|ENGINE=|UNSIGNED|CHARSET=" --include="*.sql"
-
-# 检查 MySQL 分页语法 (LIMIT offset, count)
-grep -rE "LIMIT\s+\d+\s*,\s*\d+" --include="*.xml" --include="*.sql"
 
 # 检查 ON DUPLICATE KEY
 grep -r "ON DUPLICATE KEY" --include="*.xml" --include="*.sql" --include="*.java"
