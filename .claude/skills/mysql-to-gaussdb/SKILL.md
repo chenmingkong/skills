@@ -167,6 +167,15 @@ CREATE TRIGGER trg_user_update_time
     EXECUTE FUNCTION update_timestamp();
 ```
 
+**时间字段默认值转换：**
+
+GaussDB 不支持零值时间作为默认值：
+
+| MySQL | GaussDB |
+|-------|---------|
+| `DEFAULT '0000-00-00 00:00:00'` | `DEFAULT CURRENT_TIMESTAMP` |
+| `DEFAULT '00-00-00 00:00:00'` | `DEFAULT CURRENT_TIMESTAMP` |
+
 删除 MySQL 特有语法: `ENGINE=InnoDB`, `DEFAULT CHARSET=utf8mb4`, `UNSIGNED`, `AUTO_INCREMENT=N`, `ON UPDATE CURRENT_TIMESTAMP`
 
 ### 6. 迁移完整性校验
@@ -197,6 +206,9 @@ grep -rE "IFNULL|DATE_FORMAT|GROUP_CONCAT|UNIX_TIMESTAMP|FROM_UNIXTIME|CURDATE|D
 
 # 检查 MySQL 特有的 DDL 语法
 grep -rE "AUTO_INCREMENT|ENGINE=|UNSIGNED|CHARSET=|ON UPDATE CURRENT_TIMESTAMP" --include="*.sql"
+
+# 检查零值时间默认值
+grep -rE "DEFAULT\s*'0+(-0+){2}\s+0+(:0+){2}'" --include="*.sql"
 
 # 检查字段定义中的 COMMENT（需转为 COMMENT ON COLUMN）
 grep -rE "COMMENT\s*'" --include="*.sql"
