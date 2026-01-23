@@ -99,7 +99,7 @@ SELECT user_id, MAX(username) AS username, COUNT(*) FROM orders GROUP BY user_id
 | `INT AUTO_INCREMENT` | `INTEGER` + 序列 |
 | `TINYINT(1)` | `BOOLEAN` |
 | `TINYINT` | `int2` |
-| `DATETIME` | `TIMESTAMP` |
+| `DATETIME` / `TIMESTAMP` | `timestamp(0)` |
 | `DOUBLE` | `DOUBLE PRECISION` |
 | `BLOB` / `LONGBLOB` | `BYTEA` |
 | `LONGTEXT` / `MEDIUMTEXT` | `TEXT` |
