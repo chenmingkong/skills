@@ -81,27 +81,71 @@ mybatis-config.xml（如配置了 plugins）添加：
 
 ### 4. SQL 语法转换
 
+**通用函数转换：**
+
 | MySQL | GaussDB |
 |-------|---------|
 | `` `table_name` `` / `` `column` `` | 移除反引号，或用双引号 `"table_name"` / `"column"`，大写需转小写 |
 | 字符串值 `"text"` | 字符串值 `'text'` |
 | `IFNULL(a, b)` | `COALESCE(a, b)` |
 | `IF(cond, a, b)` | `CASE WHEN cond THEN a ELSE b END` |
-| `DATE_FORMAT(d, '%Y-%m-%d')` | `TO_CHAR(d, 'YYYY-MM-DD')` |
-| `DATE_FORMAT(d, '%Y-%m-%d %H:%i:%s')` | `TO_CHAR(d, 'YYYY-MM-DD HH24:MI:SS')` |
 | `ON DUPLICATE KEY UPDATE` | `ON CONFLICT (key) DO UPDATE SET` |
 | `GROUP_CONCAT(col)` | `STRING_AGG(col::text, ',')` |
-| `UNIX_TIMESTAMP()` | `EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)::INTEGER` |
-| `FROM_UNIXTIME(ts)` | `TO_TIMESTAMP(ts)` |
-| `CURDATE()` | `CURRENT_DATE` |
-| `DATE(CURDATE()+INTERVAL n DAY)` | `TO_CHAR(CURRENT_DATE + INTERVAL 'n DAY', 'YYYY-MM-DD')` |
-| `DATE_ADD(date, INTERVAL n DAY)` | `TO_CHAR(CAST(date AS TIMESTAMP) + INTERVAL 'n DAY', 'YYYY-MM-DD')` |
-| `DATE_SUB(date, INTERVAL n DAY)` | `TO_CHAR(CAST(date AS TIMESTAMP) - INTERVAL 'n DAY', 'YYYY-MM-DD')` |
 | SELECT 非聚合列不在 GROUP BY 中 | 对非聚合列使用 `MAX(col)` 包装 |
 | `SELECT EXISTS(...)` 返回 0/1 | `SELECT (EXISTS(...))::int` |
 | `JSON_OBJECT(key, value, ...)` | `json_build_object(key, value, ...)` |
 | `ANY_VALUE(col)` | `MAX(col)` |
-| `TIMESTAMPDIFF(DAY, start, end)` | `EXTRACT(DAY FROM (end - start))` |
+
+**日期时间函数转换（重要）：**
+
+| MySQL | GaussDB | 说明 |
+|-------|---------|------|
+| `NOW()` | `NOW()` | 兼容，无需修改 |
+| `CURDATE()` | `CURRENT_DATE` | 获取当前日期 |
+| `CURTIME()` | `CURRENT_TIME` | 获取当前时间 |
+| `UNIX_TIMESTAMP()` | `EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)::INTEGER` | 获取当前时间戳 |
+| `UNIX_TIMESTAMP(date)` | `EXTRACT(EPOCH FROM date)::INTEGER` | 日期转时间戳 |
+| `FROM_UNIXTIME(ts)` | `TO_TIMESTAMP(ts)` | 时间戳转日期 |
+| `DATE_FORMAT(d, '%Y-%m-%d')` | `TO_CHAR(d, 'YYYY-MM-DD')` | 日期格式化 |
+| `DATE_FORMAT(d, '%Y-%m-%d %H:%i:%s')` | `TO_CHAR(d, 'YYYY-MM-DD HH24:MI:SS')` | 日期时间格式化 |
+| `DATE_FORMAT(d, '%Y%m%d')` | `TO_CHAR(d, 'YYYYMMDD')` | 日期格式化（无分隔符） |
+| `DATE_FORMAT(d, '%H:%i:%s')` | `TO_CHAR(d, 'HH24:MI:SS')` | 时间格式化 |
+| `DATE_ADD(date, INTERVAL n DAY)` | `date + INTERVAL 'n DAY'` | 日期加天数 |
+| `DATE_ADD(date, INTERVAL n MONTH)` | `date + INTERVAL 'n MONTH'` | 日期加月数 |
+| `DATE_ADD(date, INTERVAL n YEAR)` | `date + INTERVAL 'n YEAR'` | 日期加年数 |
+| `DATE_SUB(date, INTERVAL n DAY)` | `date - INTERVAL 'n DAY'` | 日期减天数 |
+| `DATE_SUB(date, INTERVAL n MONTH)` | `date - INTERVAL 'n MONTH'` | 日期减月数 |
+| `DATE_SUB(date, INTERVAL n YEAR)` | `date - INTERVAL 'n YEAR'` | 日期减年数 |
+| `DATEDIFF(date1, date2)` | `(date1::date - date2::date)` | 两日期相差天数 |
+| `TIMESTAMPDIFF(DAY, start, end)` | `EXTRACT(DAY FROM (end - start))` | 时间差（天） |
+| `TIMESTAMPDIFF(HOUR, start, end)` | `EXTRACT(EPOCH FROM (end - start))::INTEGER / 3600` | 时间差（小时） |
+| `TIMESTAMPDIFF(MINUTE, start, end)` | `EXTRACT(EPOCH FROM (end - start))::INTEGER / 60` | 时间差（分钟） |
+| `TIMESTAMPDIFF(SECOND, start, end)` | `EXTRACT(EPOCH FROM (end - start))::INTEGER` | 时间差（秒） |
+| `DATE(datetime)` | `datetime::date` 或 `CAST(datetime AS DATE)` | 提取日期部分 |
+| `TIME(datetime)` | `datetime::time` 或 `CAST(datetime AS TIME)` | 提取时间部分 |
+| `YEAR(date)` | `EXTRACT(YEAR FROM date)` | 提取年份 |
+| `MONTH(date)` | `EXTRACT(MONTH FROM date)` | 提取月份 |
+| `DAY(date)` | `EXTRACT(DAY FROM date)` | 提取日 |
+| `HOUR(time)` | `EXTRACT(HOUR FROM time)` | 提取小时 |
+| `MINUTE(time)` | `EXTRACT(MINUTE FROM time)` | 提取分钟 |
+| `SECOND(time)` | `EXTRACT(SECOND FROM time)` | 提取秒 |
+| `STR_TO_DATE(str, '%Y-%m-%d')` | `TO_DATE(str, 'YYYY-MM-DD')` | 字符串转日期 |
+| `STR_TO_DATE(str, '%Y-%m-%d %H:%i:%s')` | `TO_TIMESTAMP(str, 'YYYY-MM-DD HH24:MI:SS')` | 字符串转时间戳 |
+
+**DATE_FORMAT 格式符对照：**
+
+| MySQL 格式符 | GaussDB 格式符 | 含义 |
+|-------------|---------------|------|
+| `%Y` | `YYYY` | 4位年份 |
+| `%y` | `YY` | 2位年份 |
+| `%m` | `MM` | 月份(01-12) |
+| `%d` | `DD` | 日(01-31) |
+| `%H` | `HH24` | 小时(00-23) |
+| `%h` | `HH12` | 小时(01-12) |
+| `%i` | `MI` | 分钟(00-59) |
+| `%s` | `SS` | 秒(00-59) |
+| `%W` | `DAY` | 星期名称 |
+| `%w` | `D` | 星期(0-6) |
 
 **GROUP BY 非聚合列处理说明：**
 MySQL 默认允许 SELECT 中包含不在 GROUP BY 子句中的非聚合列（`ONLY_FULL_GROUP_BY` 关闭时），GaussDB 严格遵循 SQL 标准，不允许此行为。
@@ -249,7 +293,10 @@ grep -r "\`" --include="*.xml" --include="*.sql"
 grep -rE "=\"[^\"]+\"" --include="*.xml" --include="*.sql"
 
 # 检查未转换的 MySQL 函数
-grep -rE "IFNULL|DATE_FORMAT|GROUP_CONCAT|UNIX_TIMESTAMP|FROM_UNIXTIME|CURDATE|DATE_ADD|DATE_SUB|JSON_OBJECT|ANY_VALUE|TIMESTAMPDIFF" --include="*.xml" --include="*.sql" --include="*.java"
+grep -rE "IFNULL|GROUP_CONCAT|JSON_OBJECT|ANY_VALUE" --include="*.xml" --include="*.sql" --include="*.java"
+
+# 检查未转换的 MySQL 日期函数（重点检查）
+grep -rE "DATE_FORMAT|UNIX_TIMESTAMP|FROM_UNIXTIME|CURDATE|CURTIME|DATE_ADD|DATE_SUB|DATEDIFF|TIMESTAMPDIFF|STR_TO_DATE|YEAR\(|MONTH\(|DAY\(|HOUR\(|MINUTE\(|SECOND\(" --include="*.xml" --include="*.sql" --include="*.java"
 
 # 检查 ON DUPLICATE KEY
 grep -r "ON DUPLICATE KEY" --include="*.xml" --include="*.sql" --include="*.java"
