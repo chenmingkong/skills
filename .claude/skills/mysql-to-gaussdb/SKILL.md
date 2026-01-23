@@ -168,6 +168,20 @@ CREATE TRIGGER trg_user_update_time
     EXECUTE FUNCTION update_timestamp();
 ```
 
+**索引名称转换：**
+
+GaussDB 同一 schema 中不允许索引名重复，需将索引名改为"表名_索引名"格式：
+
+```sql
+-- MySQL
+CREATE INDEX idx_name ON user(name);
+CREATE INDEX idx_name ON order(name);
+
+-- GaussDB
+CREATE INDEX user_idx_name ON user(name);
+CREATE INDEX order_idx_name ON order(name);
+```
+
 **时间字段默认值转换：**
 
 GaussDB 不支持零值时间作为默认值：
