@@ -101,6 +101,7 @@ mybatis-config.xml（如配置了 plugins）添加：
 | `SELECT EXISTS(...)` 返回 0/1 | `SELECT (EXISTS(...))::int` |
 | `JSON_OBJECT(key, value, ...)` | `json_build_object(key, value, ...)` |
 | `ANY_VALUE(col)` | `MAX(col)` |
+| `TIMESTAMPDIFF(DAY, start, end)` | `EXTRACT(DAY FROM (end - start))` |
 
 **GROUP BY 非聚合列处理说明：**
 MySQL 默认允许 SELECT 中包含不在 GROUP BY 子句中的非聚合列（`ONLY_FULL_GROUP_BY` 关闭时），GaussDB 严格遵循 SQL 标准，不允许此行为。
@@ -248,7 +249,7 @@ grep -r "\`" --include="*.xml" --include="*.sql"
 grep -rE "=\"[^\"]+\"" --include="*.xml" --include="*.sql"
 
 # 检查未转换的 MySQL 函数
-grep -rE "IFNULL|DATE_FORMAT|GROUP_CONCAT|UNIX_TIMESTAMP|FROM_UNIXTIME|CURDATE|DATE_ADD|DATE_SUB|JSON_OBJECT|ANY_VALUE" --include="*.xml" --include="*.sql" --include="*.java"
+grep -rE "IFNULL|DATE_FORMAT|GROUP_CONCAT|UNIX_TIMESTAMP|FROM_UNIXTIME|CURDATE|DATE_ADD|DATE_SUB|JSON_OBJECT|ANY_VALUE|TIMESTAMPDIFF" --include="*.xml" --include="*.sql" --include="*.java"
 
 # 检查 ON DUPLICATE KEY
 grep -r "ON DUPLICATE KEY" --include="*.xml" --include="*.sql" --include="*.java"
