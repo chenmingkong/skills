@@ -49,7 +49,7 @@ implementation 'org.opengauss:opengauss-jdbc:6.0.0-htrunk3.csi.gaussdb_kernel.op
 
 | 配置项 | MySQL | GaussDB |
 |--------|-------|---------|
-| driver-class-name | `com.mysql.cj.jdbc.Driver` | `org.opengauss.Driver` |
+| driver-class-name | `com.mysql.cj.jdbc.Driver` | `com.huawei.opengauss.jdbc.Driver` |
 | url | `jdbc:mysql://host:3306/db` | `jdbc:opengauss://host:5432/db?currentSchema=public` |
 | database-platform | `MySQL8Dialect` | `org.hibernate.dialect.PostgreSQLDialect` |
 
