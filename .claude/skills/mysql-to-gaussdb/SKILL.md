@@ -70,6 +70,18 @@ implementation 'org.opengauss:opengauss-jdbc:5.0.0'
 | `DATE(CURDATE()+INTERVAL n DAY)` | `TO_CHAR(CURRENT_DATE + INTERVAL 'n DAY', 'YYYY-MM-DD')` |
 | `DATE_ADD(date, INTERVAL n DAY)` | `TO_CHAR(CAST(date AS TIMESTAMP) + INTERVAL 'n DAY', 'YYYY-MM-DD')` |
 | `DATE_SUB(date, INTERVAL n DAY)` | `TO_CHAR(CAST(date AS TIMESTAMP) - INTERVAL 'n DAY', 'YYYY-MM-DD')` |
+| SELECT 非聚合列不在 GROUP BY 中 | 对非聚合列使用 `MAX(col)` 或 `ANY_VALUE(col)` |
+
+**GROUP BY 非聚合列处理说明：**
+MySQL 默认允许 SELECT 中包含不在 GROUP BY 子句中的非聚合列（`ONLY_FULL_GROUP_BY` 关闭时），GaussDB 严格遵循 SQL 标准，不允许此行为。
+
+```sql
+-- MySQL (允许)
+SELECT user_id, username, COUNT(*) FROM orders GROUP BY user_id;
+
+-- GaussDB (需要修改)
+SELECT user_id, MAX(username) AS username, COUNT(*) FROM orders GROUP BY user_id;
+```
 
 **GaussDB 兼容的 MySQL 语法（无需转换）：**
 - `LIMIT offset, count` - 分页语法直接兼容
@@ -118,6 +130,9 @@ grep -rE "AUTO_INCREMENT|ENGINE=|UNSIGNED|CHARSET=" --include="*.sql"
 
 # 检查 ON DUPLICATE KEY
 grep -r "ON DUPLICATE KEY" --include="*.xml" --include="*.sql" --include="*.java"
+
+# 检查 GROUP BY 语句（需人工确认非聚合列是否都已处理）
+grep -rE "GROUP BY" --include="*.xml" --include="*.sql" --include="*.java"
 ```
 
 #### 6.2 校验清单
@@ -175,6 +190,7 @@ mvn test           # 运行测试
 
 | 遗漏类型 | 常见位置 | 解决方法 |
 |----------|----------|----------|
+| GROUP BY 非聚合列 | 所有包含 GROUP BY 的查询 | 用 `MAX(col)` 包装非聚合列 |
 | 硬编码 SQL | `@Query` 注解 | 搜索 `nativeQuery = true` |
 | 动态 SQL | MyBatis `<if>` 标签内 | 逐个检查 Mapper.xml |
 | 测试代码 | `src/test/**` | 同步修改测试配置 |
