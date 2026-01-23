@@ -83,7 +83,7 @@ mybatis-config.xml（如配置了 plugins）添加：
 
 | MySQL | GaussDB |
 |-------|---------|
-| `` `Column` `` | `"column"` (反引号转双引号，大写转小写) |
+| `` `table_name` `` / `` `column` `` | 移除反引号，或用双引号 `"table_name"` / `"column"`，大写需转小写 |
 | 字符串值 `"text"` | 字符串值 `'text'` |
 | `IFNULL(a, b)` | `COALESCE(a, b)` |
 | `IF(cond, a, b)` | `CASE WHEN cond THEN a ELSE b END` |
@@ -350,6 +350,12 @@ mvn test           # 运行测试
 ```
 
 ### 8. 注意事项
+
+**反引号必须移除：**
+GaussDB 不支持使用反引号 `` ` `` 包围表名和字段名，必须：
+- 直接移除反引号：`` `user` `` → `user`
+- 或改为双引号（保留关键字时）：`` `order` `` → `"order"`
+- 大写标识符需转为小写：`` `UserName` `` → `username` 或 `"username"`
 
 **XML 转义字符保留：**
 - `&lt;` 不需要改成 `<`
