@@ -95,14 +95,29 @@ SELECT user_id, MAX(username) AS username, COUNT(*) FROM orders GROUP BY user_id
 
 | MySQL | GaussDB |
 |-------|---------|
-| `BIGINT AUTO_INCREMENT` | `BIGSERIAL` |
-| `INT AUTO_INCREMENT` | `SERIAL` |
+| `BIGINT AUTO_INCREMENT` | `BIGINT` + 序列 |
+| `INT AUTO_INCREMENT` | `INTEGER` + 序列 |
 | `TINYINT(1)` | `BOOLEAN` |
 | `TINYINT` | `SMALLINT` |
 | `DATETIME` | `TIMESTAMP` |
 | `DOUBLE` | `DOUBLE PRECISION` |
 | `BLOB` / `LONGBLOB` | `BYTEA` |
 | `LONGTEXT` / `MEDIUMTEXT` | `TEXT` |
+
+**AUTO_INCREMENT 转换为序列：**
+
+GaussDB 需要创建序列实现自增，并设置起始值为当前最大值+1：
+
+```sql
+-- 1. 创建序列
+CREATE SEQUENCE table_name_id_seq;
+
+-- 2. 设置序列起始值为当前最大值+1
+SELECT setval('table_name_id_seq', COALESCE((SELECT MAX(id) FROM table_name), 0) + 1, false);
+
+-- 3. 设置列默认值为序列
+ALTER TABLE table_name ALTER COLUMN id SET DEFAULT nextval('table_name_id_seq');
+```
 
 删除 MySQL 特有语法: `ENGINE=InnoDB`, `DEFAULT CHARSET=utf8mb4`, `UNSIGNED`, `AUTO_INCREMENT=N`
 
