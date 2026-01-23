@@ -110,12 +110,12 @@ mybatis-config.xml（如配置了 plugins）添加：
 | `DATE_FORMAT(d, '%Y-%m-%d %H:%i:%s')` | `TO_CHAR(d, 'YYYY-MM-DD HH24:MI:SS')` | 日期时间格式化 |
 | `DATE_FORMAT(d, '%Y%m%d')` | `TO_CHAR(d, 'YYYYMMDD')` | 日期格式化（无分隔符） |
 | `DATE_FORMAT(d, '%H:%i:%s')` | `TO_CHAR(d, 'HH24:MI:SS')` | 时间格式化 |
-| `DATE_ADD(date, INTERVAL n DAY)` | `date + INTERVAL 'n DAY'` | 日期加天数 |
-| `DATE_ADD(date, INTERVAL n MONTH)` | `date + INTERVAL 'n MONTH'` | 日期加月数 |
-| `DATE_ADD(date, INTERVAL n YEAR)` | `date + INTERVAL 'n YEAR'` | 日期加年数 |
-| `DATE_SUB(date, INTERVAL n DAY)` | `date - INTERVAL 'n DAY'` | 日期减天数 |
-| `DATE_SUB(date, INTERVAL n MONTH)` | `date - INTERVAL 'n MONTH'` | 日期减月数 |
-| `DATE_SUB(date, INTERVAL n YEAR)` | `date - INTERVAL 'n YEAR'` | 日期减年数 |
+| `DATE_ADD(date, INTERVAL n DAY)` | `TO_CHAR(CAST(date AS TIMESTAMP) + INTERVAL 'n DAY', 'YYYY-MM-DD')` | 日期加天数 |
+| `DATE_ADD(date, INTERVAL n MONTH)` | `TO_CHAR(CAST(date AS TIMESTAMP) + INTERVAL 'n MONTH', 'YYYY-MM-DD')` | 日期加月数 |
+| `DATE_ADD(date, INTERVAL n YEAR)` | `TO_CHAR(CAST(date AS TIMESTAMP) + INTERVAL 'n YEAR', 'YYYY-MM-DD')` | 日期加年数 |
+| `DATE_SUB(date, INTERVAL n DAY)` | `TO_CHAR(CAST(date AS TIMESTAMP) - INTERVAL 'n DAY', 'YYYY-MM-DD')` | 日期减天数 |
+| `DATE_SUB(date, INTERVAL n MONTH)` | `TO_CHAR(CAST(date AS TIMESTAMP) - INTERVAL 'n MONTH', 'YYYY-MM-DD')` | 日期减月数 |
+| `DATE_SUB(date, INTERVAL n YEAR)` | `TO_CHAR(CAST(date AS TIMESTAMP) - INTERVAL 'n YEAR', 'YYYY-MM-DD')` | 日期减年数 |
 | `DATEDIFF(date1, date2)` | `(date1::date - date2::date)` | 两日期相差天数 |
 | `TIMESTAMPDIFF(DAY, start, end)` | `EXTRACT(DAY FROM (end - start))` | 时间差（天） |
 | `TIMESTAMPDIFF(HOUR, start, end)` | `EXTRACT(EPOCH FROM (end - start))::INTEGER / 3600` | 时间差（小时） |
