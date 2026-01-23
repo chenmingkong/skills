@@ -72,6 +72,7 @@ implementation 'org.opengauss:opengauss-jdbc:5.0.0'
 | `DATE_ADD(date, INTERVAL n DAY)` | `TO_CHAR(CAST(date AS TIMESTAMP) + INTERVAL 'n DAY', 'YYYY-MM-DD')` |
 | `DATE_SUB(date, INTERVAL n DAY)` | `TO_CHAR(CAST(date AS TIMESTAMP) - INTERVAL 'n DAY', 'YYYY-MM-DD')` |
 | SELECT 非聚合列不在 GROUP BY 中 | 对非聚合列使用 `MAX(col)` 包装 |
+| `SELECT EXISTS(...)` 返回 0/1 | `SELECT (EXISTS(...))::int` |
 
 **GROUP BY 非聚合列处理说明：**
 MySQL 默认允许 SELECT 中包含不在 GROUP BY 子句中的非聚合列（`ONLY_FULL_GROUP_BY` 关闭时），GaussDB 严格遵循 SQL 标准，不允许此行为。
@@ -137,6 +138,9 @@ grep -r "ON DUPLICATE KEY" --include="*.xml" --include="*.sql" --include="*.java
 
 # 检查 GROUP BY 语句（需人工确认非聚合列是否都已处理）
 grep -rE "GROUP BY" --include="*.xml" --include="*.sql" --include="*.java"
+
+# 检查 EXISTS 返回值（如需返回 0/1 需转换为 (EXISTS(...))::int）
+grep -rE "SELECT\s+EXISTS" --include="*.xml" --include="*.sql" --include="*.java"
 ```
 
 #### 6.2 校验清单
