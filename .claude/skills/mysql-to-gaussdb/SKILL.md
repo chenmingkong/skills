@@ -81,11 +81,29 @@ mybatis-config.xml（如配置了 plugins）添加：
 
 ### 4. SQL 语法转换
 
+**标识符引号转换（表名、字段名）：**
+
+MySQL 使用反引号 `` ` `` 包裹表名和字段名，GaussDB 使用双引号 `"` 包裹：
+
+```sql
+-- MySQL 写法
+SELECT `id`, `user_name` FROM `user` WHERE `status` = 1;
+SELECT `User`.`Name` FROM `User`;
+
+-- GaussDB 写法（反引号全部替换为双引号，标识符转小写）
+SELECT "id", "user_name" FROM "user" WHERE "status" = 1;
+SELECT "user"."name" FROM "user";
+```
+
+**转换规则：**
+- `` `identifier` `` → `"identifier"` （反引号替换为双引号）
+- `` `TableName` `` → `"tablename"` （大写必须转为小写）
+- `` `Column_Name` `` → `"column_name"` （大写必须转为小写）
+
 **通用函数转换：**
 
 | MySQL | GaussDB |
 |-------|---------|
-| `` `table_name` `` / `` `column` `` | 移除反引号，或用双引号 `"table_name"` / `"column"`，大写需转小写 |
 | 字符串值 `"text"` | 字符串值 `'text'` |
 | `IFNULL(a, b)` | `COALESCE(a, b)` |
 | `IF(cond, a, b)` | `CASE WHEN cond THEN a ELSE b END` |
@@ -399,11 +417,12 @@ mvn test           # 运行测试
 
 ### 8. 注意事项
 
-**反引号必须移除：**
-GaussDB 不支持使用反引号 `` ` `` 包围表名和字段名，必须：
-- 直接移除反引号：`` `user` `` → `user`
-- 或改为双引号（保留关键字时）：`` `order` `` → `"order"`
-- 大写标识符需转为小写：`` `UserName` `` → `username` 或 `"username"`
+**反引号必须替换为双引号：**
+MySQL 使用反引号 `` ` `` 包裹标识符，GaussDB 使用双引号 `"`，转换规则：
+- `` `user` `` → `"user"` （反引号改双引号）
+- `` `order` `` → `"order"` （关键字必须用双引号）
+- `` `UserName` `` → `"username"` （大写必须转小写）
+- `` `table`.`column` `` → `"table"."column"` （表名.字段名同样处理）
 
 **XML 转义字符保留：**
 - `&lt;` 不需要改成 `<`
