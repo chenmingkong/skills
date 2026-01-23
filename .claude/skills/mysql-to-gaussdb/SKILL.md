@@ -104,6 +104,7 @@ SELECT user_id, MAX(username) AS username, COUNT(*) FROM orders GROUP BY user_id
 | `DOUBLE` / `FLOAT` | `float8` |
 | `BLOB` / `LONGBLOB` | `BYTEA` |
 | `LONGTEXT` / `MEDIUMTEXT` | `TEXT` |
+| `VARCHAR(n)` | `NVARCHAR2(n)` |
 
 **AUTO_INCREMENT 转换为序列：**
 
