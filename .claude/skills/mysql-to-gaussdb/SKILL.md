@@ -226,6 +226,7 @@ GaussDB 不支持零值时间作为默认值：
 #### 6.1 扫描残留 MySQL 语法
 
 ```bash
+# ========== 依赖和配置检查 ==========
 # 检查是否还有 MySQL 驱动引用
 grep -r "mysql-connector-java" --include="pom.xml" --include="build.gradle"
 grep -r "com.mysql" --include="*.java" --include="*.xml" --include="*.yml" --include="*.properties"
@@ -236,23 +237,18 @@ grep -r "jdbc:mysql" --include="*.yml" --include="*.properties" --include="*.xml
 # 检查是否还有 MySQL 方言
 grep -r "MySQLDialect\|MySQL5Dialect\|MySQL8Dialect" --include="*.yml" --include="*.properties" --include="*.java"
 
+# 检查 PageHelper 方言配置（应为 postgresql）
+grep -r "helper-dialect" --include="*.yml" --include="*.properties" --include="*.xml"
+
+# ========== SQL 语法检查 ==========
 # 检查是否还有反引号（MySQL 特有）
 grep -r "\`" --include="*.xml" --include="*.sql"
 
 # 检查 DML 中使用双引号包围字符串值（GaussDB 双引号仅用于标识符）
-grep -rE "\"[^\"]+\"" --include="*.xml" --include="*.sql"
+grep -rE "=\"[^\"]+\"" --include="*.xml" --include="*.sql"
 
 # 检查未转换的 MySQL 函数
 grep -rE "IFNULL|DATE_FORMAT|GROUP_CONCAT|UNIX_TIMESTAMP|FROM_UNIXTIME|CURDATE|DATE_ADD|DATE_SUB|JSON_OBJECT|ANY_VALUE" --include="*.xml" --include="*.sql" --include="*.java"
-
-# 检查 MySQL 特有的 DDL 语法
-grep -rE "AUTO_INCREMENT|ENGINE=|UNSIGNED|CHARSET=|ON UPDATE CURRENT_TIMESTAMP" --include="*.sql"
-
-# 检查零值时间默认值
-grep -rE "DEFAULT\s*'0+(-0+){2}\s+0+(:0+){2}'" --include="*.sql"
-
-# 检查字段定义中的 COMMENT（需转为 COMMENT ON COLUMN）
-grep -rE "COMMENT\s*'" --include="*.sql"
 
 # 检查 ON DUPLICATE KEY
 grep -r "ON DUPLICATE KEY" --include="*.xml" --include="*.sql" --include="*.java"
@@ -262,6 +258,22 @@ grep -rE "GROUP BY" --include="*.xml" --include="*.sql" --include="*.java"
 
 # 检查 EXISTS 返回值（如需返回 0/1 需转换为 (EXISTS(...))::int）
 grep -rE "SELECT\s+EXISTS" --include="*.xml" --include="*.sql" --include="*.java"
+
+# ========== DDL 语法检查 ==========
+# 检查 MySQL 特有的 DDL 语法
+grep -rE "AUTO_INCREMENT|ENGINE=|UNSIGNED|CHARSET=|ON UPDATE CURRENT_TIMESTAMP" --include="*.sql"
+
+# 检查零值时间默认值
+grep -rE "DEFAULT\s*'0+(-0+){2}\s+0+(:0+){2}'" --include="*.sql"
+
+# 检查字段定义中的 COMMENT（需转为 COMMENT ON COLUMN）
+grep -rE "COMMENT\s*'" --include="*.sql"
+
+# 检查 VARCHAR（应转为 NVARCHAR2）
+grep -rE "\bVARCHAR\s*\(" --include="*.sql"
+
+# 检查索引名是否包含表名前缀（避免同 schema 索引名重复）
+grep -rE "CREATE\s+INDEX\s+idx_" --include="*.sql"
 ```
 
 #### 6.2 校验清单
@@ -272,11 +284,20 @@ grep -rE "SELECT\s+EXISTS" --include="*.xml" --include="*.sql" --include="*.java
 | MySQL 驱动类 | `grep -r "com.mysql"` | 无匹配 |
 | JDBC URL | `grep -r "jdbc:mysql"` | 无匹配 |
 | MySQL 方言 | `grep -r "MySQLDialect"` | 无匹配 |
-| 反引号 | `grep -r "\\\`" *.xml *.sql` | 无匹配 |
+| PageHelper 方言 | `grep -r "helper-dialect"` | postgresql |
+| 反引号 | `grep -r "\`"` | 无匹配 |
+| 双引号字符串 | `grep -rE "=\"[^\"]+\""` | 无匹配 |
 | IFNULL 函数 | `grep -r "IFNULL"` | 无匹配 |
 | DATE_FORMAT | `grep -r "DATE_FORMAT"` | 无匹配 |
+| JSON_OBJECT | `grep -r "JSON_OBJECT"` | 无匹配 |
+| ANY_VALUE | `grep -r "ANY_VALUE"` | 无匹配 |
 | AUTO_INCREMENT | `grep -r "AUTO_INCREMENT"` | 无匹配 |
 | ON DUPLICATE KEY | `grep -r "ON DUPLICATE KEY"` | 无匹配 |
+| ON UPDATE CURRENT_TIMESTAMP | `grep -r "ON UPDATE CURRENT_TIMESTAMP"` | 无匹配 |
+| 零值时间默认值 | `grep -rE "DEFAULT.*0000-00-00"` | 无匹配 |
+| 内联 COMMENT | `grep -rE "COMMENT\s*'"` | 无匹配 |
+| VARCHAR | `grep -rE "\bVARCHAR\s*\("` | 无匹配（应为 NVARCHAR2） |
+| 索引名前缀 | `grep -rE "CREATE\s+INDEX\s+idx_"` | 应含表名前缀 |
 
 #### 6.3 生成校验报告
 
@@ -286,17 +307,30 @@ grep -rE "SELECT\s+EXISTS" --include="*.xml" --include="*.sql" --include="*.java
 ============ MySQL to GaussDB 迁移校验报告 ============
 
 ✅ 依赖配置
-   - pom.xml: 已切换到 opengauss-jdbc
+   - pom.xml: 已切换到 opengauss-jdbc 6.0.0
    - 无残留 MySQL 驱动引用
 
 ✅ 数据库配置
-   - driver-class-name: org.opengauss.Driver
+   - driver-class-name: com.huawei.opengauss.jdbc.Driver
    - url: jdbc:opengauss://...
    - dialect: PostgreSQLDialect
+   - pagehelper.helper-dialect: postgresql
 
-⚠️ 待检查项（如有）
+✅ SQL 语法
+   - 无反引号
+   - 无双引号字符串值
+   - 无未转换的 MySQL 函数
+
+✅ DDL 语法
+   - 无 AUTO_INCREMENT（已转为序列）
+   - 无内联 COMMENT（已转为 COMMENT ON COLUMN）
+   - VARCHAR 已转为 NVARCHAR2
+   - 索引名已添加表名前缀
+
+⚠️ 待人工检查项（如有）
+   - GROUP BY 语句：确认非聚合列已用 MAX() 包装
+   - SELECT EXISTS：如需返回 0/1 需转为 (EXISTS(...))::int
    - src/main/resources/mapper/UserMapper.xml:45 - 发现反引号
-   - src/main/resources/db/init.sql:23 - 发现 AUTO_INCREMENT
 
 ❌ 未通过项（如有）
    - 仍存在 MySQL 驱动依赖
