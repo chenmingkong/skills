@@ -100,7 +100,7 @@ SELECT user_id, MAX(username) AS username, COUNT(*) FROM orders GROUP BY user_id
 | `TINYINT(1)` | `BOOLEAN` |
 | `TINYINT` | `int2` |
 | `DATETIME` / `TIMESTAMP` | `timestamp(0)` |
-| `DOUBLE` | `DOUBLE PRECISION` |
+| `DOUBLE` | `numeric` |
 | `BLOB` / `LONGBLOB` | `BYTEA` |
 | `LONGTEXT` / `MEDIUMTEXT` | `TEXT` |
 
