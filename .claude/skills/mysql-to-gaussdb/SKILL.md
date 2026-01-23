@@ -140,7 +140,34 @@ COMMENT ON COLUMN user.id IS '用户ID';
 COMMENT ON COLUMN user.name IS '用户名';
 ```
 
-删除 MySQL 特有语法: `ENGINE=InnoDB`, `DEFAULT CHARSET=utf8mb4`, `UNSIGNED`, `AUTO_INCREMENT=N`
+**ON UPDATE CURRENT_TIMESTAMP 转换：**
+
+GaussDB 不支持 `ON UPDATE CURRENT_TIMESTAMP`，需使用触发器实现：
+
+```sql
+-- MySQL
+CREATE TABLE user (
+    id BIGINT,
+    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+
+-- GaussDB: 创建触发器函数
+CREATE OR REPLACE FUNCTION update_timestamp()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.update_time = CURRENT_TIMESTAMP;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- 创建触发器
+CREATE TRIGGER trg_user_update_time
+    BEFORE UPDATE ON user
+    FOR EACH ROW
+    EXECUTE FUNCTION update_timestamp();
+```
+
+删除 MySQL 特有语法: `ENGINE=InnoDB`, `DEFAULT CHARSET=utf8mb4`, `UNSIGNED`, `AUTO_INCREMENT=N`, `ON UPDATE CURRENT_TIMESTAMP`
 
 ### 6. 迁移完整性校验
 
@@ -169,7 +196,7 @@ grep -rE "\"[^\"]+\"" --include="*.xml" --include="*.sql"
 grep -rE "IFNULL|DATE_FORMAT|GROUP_CONCAT|UNIX_TIMESTAMP|FROM_UNIXTIME|CURDATE|DATE_ADD|DATE_SUB|JSON_OBJECT|ANY_VALUE" --include="*.xml" --include="*.sql" --include="*.java"
 
 # 检查 MySQL 特有的 DDL 语法
-grep -rE "AUTO_INCREMENT|ENGINE=|UNSIGNED|CHARSET=" --include="*.sql"
+grep -rE "AUTO_INCREMENT|ENGINE=|UNSIGNED|CHARSET=|ON UPDATE CURRENT_TIMESTAMP" --include="*.sql"
 
 # 检查字段定义中的 COMMENT（需转为 COMMENT ON COLUMN）
 grep -rE "COMMENT\s*'" --include="*.sql"
