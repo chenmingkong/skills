@@ -34,7 +34,7 @@ argument-hint: "[项目目录]"
 <dependency>
     <groupId>org.opengauss</groupId>
     <artifactId>opengauss-jdbc</artifactId>
-    <version>5.0.0</version>
+    <version>6.0.0-htrunk3.csi.gaussdb_kernel.opengaussjdbc.r1</version>
 </dependency>
 ```
 
@@ -42,7 +42,7 @@ argument-hint: "[项目目录]"
 ```groovy
 // 删除: implementation 'mysql:mysql-connector-java'
 // 添加:
-implementation 'org.opengauss:opengauss-jdbc:5.0.0'
+implementation 'org.opengauss:opengauss-jdbc:6.0.0-htrunk3.csi.gaussdb_kernel.opengaussjdbc.r1'
 ```
 
 ### 3. 修改配置
