@@ -74,6 +74,7 @@ implementation 'org.opengauss:opengauss-jdbc:5.0.0'
 | SELECT 非聚合列不在 GROUP BY 中 | 对非聚合列使用 `MAX(col)` 包装 |
 | `SELECT EXISTS(...)` 返回 0/1 | `SELECT (EXISTS(...))::int` |
 | `JSON_OBJECT(key, value, ...)` | `json_build_object(key, value, ...)` |
+| `ANY_VALUE(col)` | `MAX(col)` |
 
 **GROUP BY 非聚合列处理说明：**
 MySQL 默认允许 SELECT 中包含不在 GROUP BY 子句中的非聚合列（`ONLY_FULL_GROUP_BY` 关闭时），GaussDB 严格遵循 SQL 标准，不允许此行为。
@@ -129,7 +130,7 @@ grep -r "\`" --include="*.xml" --include="*.sql"
 grep -rE "\"[^\"]+\"" --include="*.xml" --include="*.sql"
 
 # 检查未转换的 MySQL 函数
-grep -rE "IFNULL|DATE_FORMAT|GROUP_CONCAT|UNIX_TIMESTAMP|FROM_UNIXTIME|CURDATE|DATE_ADD|DATE_SUB|JSON_OBJECT" --include="*.xml" --include="*.sql" --include="*.java"
+grep -rE "IFNULL|DATE_FORMAT|GROUP_CONCAT|UNIX_TIMESTAMP|FROM_UNIXTIME|CURDATE|DATE_ADD|DATE_SUB|JSON_OBJECT|ANY_VALUE" --include="*.xml" --include="*.sql" --include="*.java"
 
 # 检查 MySQL 特有的 DDL 语法
 grep -rE "AUTO_INCREMENT|ENGINE=|UNSIGNED|CHARSET=" --include="*.sql"
