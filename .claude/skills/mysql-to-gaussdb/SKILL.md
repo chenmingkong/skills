@@ -58,6 +58,7 @@ implementation 'org.opengauss:opengauss-jdbc:5.0.0'
 | MySQL | GaussDB |
 |-------|---------|
 | `` `column` `` | `column` 或 `"column"` |
+| 字符串值 `"text"` | 字符串值 `'text'` |
 | `IFNULL(a, b)` | `COALESCE(a, b)` |
 | `IF(cond, a, b)` | `CASE WHEN cond THEN a ELSE b END` |
 | `DATE_FORMAT(d, '%Y-%m-%d')` | `TO_CHAR(d, 'YYYY-MM-DD')` |
@@ -121,6 +122,9 @@ grep -r "MySQLDialect\|MySQL5Dialect\|MySQL8Dialect" --include="*.yml" --include
 
 # 检查是否还有反引号（MySQL 特有）
 grep -r "\`" --include="*.xml" --include="*.sql"
+
+# 检查 DML 中使用双引号包围字符串值（GaussDB 双引号仅用于标识符）
+grep -rE "\"[^\"]+\"" --include="*.xml" --include="*.sql"
 
 # 检查未转换的 MySQL 函数
 grep -rE "IFNULL|DATE_FORMAT|GROUP_CONCAT|UNIX_TIMESTAMP|FROM_UNIXTIME|CURDATE|DATE_ADD|DATE_SUB" --include="*.xml" --include="*.sql" --include="*.java"
