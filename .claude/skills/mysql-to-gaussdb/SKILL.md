@@ -57,7 +57,7 @@ implementation 'org.opengauss:opengauss-jdbc:5.0.0'
 
 | MySQL | GaussDB |
 |-------|---------|
-| `` `column` `` | `column` 或 `"column"` |
+| `` `Column` `` | `"column"` (反引号转双引号，大写转小写) |
 | 字符串值 `"text"` | 字符串值 `'text'` |
 | `IFNULL(a, b)` | `COALESCE(a, b)` |
 | `IF(cond, a, b)` | `CASE WHEN cond THEN a ELSE b END` |
