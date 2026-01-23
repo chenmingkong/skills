@@ -66,6 +66,10 @@ implementation 'org.opengauss:opengauss-jdbc:5.0.0'
 | `GROUP_CONCAT(col)` | `STRING_AGG(col::text, ',')` |
 | `UNIX_TIMESTAMP()` | `EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)::INTEGER` |
 | `FROM_UNIXTIME(ts)` | `TO_TIMESTAMP(ts)` |
+| `CURDATE()` | `CURRENT_DATE` |
+| `DATE(CURDATE()+INTERVAL 3 DAY)` | `TO_CHAR(CURRENT_DATE + INTERVAL '3 DAY', 'YYYY-MM-DD')` |
+| `DATE_ADD(date, INTERVAL n DAY)` | `date + INTERVAL 'n DAY'` |
+| `DATE_SUB(date, INTERVAL n DAY)` | `date - INTERVAL 'n DAY'` |
 
 **GaussDB 兼容的 MySQL 语法（无需转换）：**
 - `LIMIT offset, count` - 分页语法直接兼容
@@ -107,7 +111,7 @@ grep -r "MySQLDialect\|MySQL5Dialect\|MySQL8Dialect" --include="*.yml" --include
 grep -r "\`" --include="*.xml" --include="*.sql"
 
 # 检查未转换的 MySQL 函数
-grep -rE "IFNULL|DATE_FORMAT|GROUP_CONCAT|UNIX_TIMESTAMP|FROM_UNIXTIME" --include="*.xml" --include="*.sql" --include="*.java"
+grep -rE "IFNULL|DATE_FORMAT|GROUP_CONCAT|UNIX_TIMESTAMP|FROM_UNIXTIME|CURDATE|DATE_ADD|DATE_SUB" --include="*.xml" --include="*.sql" --include="*.java"
 
 # 检查 MySQL 特有的 DDL 语法
 grep -rE "AUTO_INCREMENT|ENGINE=|UNSIGNED|CHARSET=" --include="*.sql"
