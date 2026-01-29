@@ -223,7 +223,33 @@ INSERT INTO user(id, name, score) VALUES(1, '张三', 100)
 ON CONFLICT (id) DO UPDATE SET score = EXCLUDED.score;
 ```
 
-## 7. 兼容的 MySQL 语法（无需转换）
+## 7. ORDER BY 排序 NULL 值处理
+
+GaussDB 中 NULL 值的默认排序行为与 MySQL 不同，需要显式指定：
+
+| MySQL | GaussDB | 说明 |
+|-------|---------|------|
+| `ORDER BY col` | `ORDER BY col NULLS FIRST` | 升序（默认），NULL 排前面 |
+| `ORDER BY col ASC` | `ORDER BY col ASC NULLS FIRST` | 升序，NULL 排前面 |
+| `ORDER BY col DESC` | `ORDER BY col DESC NULLS LAST` | 降序，NULL 排后面 |
+
+**示例：**
+
+```sql
+-- MySQL
+SELECT * FROM user ORDER BY age;
+SELECT * FROM user ORDER BY age ASC;
+SELECT * FROM user ORDER BY create_time DESC;
+SELECT * FROM user ORDER BY status ASC, create_time DESC;
+
+-- GaussDB
+SELECT * FROM user ORDER BY age NULLS FIRST;
+SELECT * FROM user ORDER BY age ASC NULLS FIRST;
+SELECT * FROM user ORDER BY create_time DESC NULLS LAST;
+SELECT * FROM user ORDER BY status ASC NULLS FIRST, create_time DESC NULLS LAST;
+```
+
+## 8. 兼容的 MySQL 语法（无需转换）
 
 以下语法 GaussDB 直接兼容：
 - `LIMIT offset, count` - 分页语法
@@ -234,7 +260,7 @@ ON CONFLICT (id) DO UPDATE SET score = EXCLUDED.score;
 - `TRIM()`, `UPPER()`, `LOWER()` - 字符串函数
 - `ABS()`, `ROUND()`, `CEIL()`, `FLOOR()` - 数学函数
 
-## 8. 注意事项
+## 9. 注意事项
 
 **XML 转义字符保留：**
 - `&lt;` 不需要改成 `<`
@@ -243,11 +269,11 @@ ON CONFLICT (id) DO UPDATE SET score = EXCLUDED.score;
 
 这些是 XML 的标准转义，在 MyBatis Mapper XML 中用于比较运算符，必须保留。
 
-## 9. 迁移完整性校验
+## 10. 迁移完整性校验
 
 转换完成后，执行以下检查确保没有遗漏。
 
-### 9.1 扫描残留 MySQL 语法
+### 10.1 扫描残留 MySQL 语法
 
 ```bash
 # ========== 标识符和字符串检查 ==========
@@ -310,6 +336,10 @@ grep -r "TIMESTAMPDIFF" --include="*.xml" --include="*.java"
 # 检查日期提取函数 YEAR/MONTH/DAY/HOUR/MINUTE/SECOND
 grep -rE "\b(YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)\s*\(" --include="*.xml" --include="*.java"
 
+# ========== ORDER BY 检查 ==========
+# 检查 ORDER BY 是否添加了 NULLS FIRST/LAST
+grep -rE "ORDER\s+BY" --include="*.xml" --include="*.java"
+
 # ========== 需人工检查 ==========
 # 检查 GROUP BY 语句（确认非聚合列已处理）
 grep -rE "GROUP\s+BY" --include="*.xml" --include="*.java"
@@ -318,7 +348,7 @@ grep -rE "GROUP\s+BY" --include="*.xml" --include="*.java"
 grep -rE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
 ```
 
-### 9.2 校验清单
+### 10.2 校验清单
 
 | 检查项 | 命令 | 期望结果 |
 |--------|------|----------|
@@ -342,10 +372,11 @@ grep -rE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
 | JSON_CONTAINS | `grep -r "JSON_CONTAINS"` | 无匹配 |
 | ANY_VALUE | `grep -r "ANY_VALUE"` | 无匹配 |
 | ON DUPLICATE KEY | `grep -r "ON DUPLICATE KEY"` | 无匹配 |
+| ORDER BY | `grep -rE "ORDER\s+BY"` | 需人工检查 NULLS FIRST/LAST |
 | GROUP BY | `grep -rE "GROUP BY"` | 需人工检查非聚合列 |
 | SELECT EXISTS | `grep -rE "SELECT\s+EXISTS"` | 需人工检查返回值 |
 
-### 9.3 生成校验报告
+### 10.3 生成校验报告
 
 扫描完成后输出报告：
 
@@ -389,7 +420,7 @@ grep -rE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
 待处理: XX 处
 ```
 
-## 10. 完整转换示例
+## 11. 完整转换示例
 
 ```xml
 <!-- ========== MySQL 原始 Mapper ========== -->
