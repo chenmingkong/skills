@@ -109,6 +109,8 @@ SELECT json_build_object('test', '1') AS data;  -- 单键值对
 |-------|---------|------|
 | `DATE_FORMAT(d, '%Y-%m-%d')` | `TO_CHAR(d, 'YYYY-MM-DD')` | 格式化日期 |
 | `DATE_FORMAT(d, '%Y-%m-%d %H:%i:%s')` | `TO_CHAR(d, 'YYYY-MM-DD HH24:MI:SS')` | 格式化日期时间 |
+| `DATE_FORMAT(d, '%Y-%m-%d %H:00:00')` | `TO_CHAR(d, 'YYYY-MM-DD HH24:00:00')` | 格式化到小时 |
+| `DATE_FORMAT(d, '%Y-%m-%d %H:%i:00')` | `TO_CHAR(d, 'YYYY-MM-DD HH24:MI:00')` | 格式化到分钟 |
 | `DATE_FORMAT(d, '%Y%m%d')` | `TO_CHAR(d, 'YYYYMMDD')` | 无分隔符 |
 | `DATE_FORMAT(d, '%H:%i:%s')` | `TO_CHAR(d, 'HH24:MI:SS')` | 格式化时间 |
 | `STR_TO_DATE(str, '%Y-%m-%d')` | `TO_DATE(str, 'YYYY-MM-DD')` | 字符串转日期 |
