@@ -107,7 +107,6 @@ SELECT "user"."name" FROM "user";
 | 字符串值 `"text"` | 字符串值 `'text'` |
 | `IFNULL(a, b)` | `COALESCE(a, b)` |
 | `IF(cond, a, b)` | `CASE WHEN cond THEN a ELSE b END` |
-| `ON DUPLICATE KEY UPDATE` | `ON CONFLICT (key) DO UPDATE SET` |
 | `GROUP_CONCAT(col)` | `STRING_AGG(col::text, ',')` |
 | SELECT 非聚合列不在 GROUP BY 中 | 对非聚合列使用 `MAX(col)` 包装 |
 | `SELECT EXISTS(...)` 返回 0/1 | `SELECT (EXISTS(...))::int` |
@@ -322,9 +321,6 @@ grep -rE "DATE_ADD|DATE_SUB" --include="*.xml" --include="*.sql" --include="*.ja
 grep -rE "DATEDIFF|TIMESTAMPDIFF" --include="*.xml" --include="*.sql" --include="*.java"
 grep -rE "\b(YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)\s*\(" --include="*.xml" --include="*.sql" --include="*.java"
 
-# 检查 ON DUPLICATE KEY
-grep -r "ON DUPLICATE KEY" --include="*.xml" --include="*.sql" --include="*.java"
-
 # 检查 ORDER BY 语句（需人工确认 NULLS FIRST/LAST）
 grep -rE "ORDER\s+BY" --include="*.xml" --include="*.sql" --include="*.java"
 
@@ -380,7 +376,6 @@ grep -rE "CREATE\s+(UNIQUE\s+)?INDEX\s+idx_" --include="*.sql"
 | JSON_OBJECT | `grep -r "JSON_OBJECT"` | 无匹配 |
 | JSON_CONTAINS | `grep -r "JSON_CONTAINS"` | 无匹配 |
 | ANY_VALUE | `grep -r "ANY_VALUE"` | 无匹配 |
-| ON DUPLICATE KEY | `grep -r "ON DUPLICATE KEY"` | 无匹配 |
 | DATE_FORMAT | `grep -r "DATE_FORMAT"` | 无匹配 |
 | STR_TO_DATE | `grep -r "STR_TO_DATE"` | 无匹配 |
 | UNIX_TIMESTAMP | `grep -r "UNIX_TIMESTAMP"` | 无匹配 |

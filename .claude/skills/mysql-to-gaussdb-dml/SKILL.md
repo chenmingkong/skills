@@ -71,7 +71,6 @@ INSERT INTO user(name) VALUES('李四');
 | `JSON_CONTAINS(col, json_val)` | `col::jsonb @> json_val::jsonb` | JSON包含检查 |
 | `ANY_VALUE(col)` | `MAX(col)` | 任意值 |
 | `SELECT EXISTS(...)` | `SELECT (EXISTS(...))::int` | EXISTS返回0/1 |
-| `ON DUPLICATE KEY UPDATE` | `ON CONFLICT (key) DO UPDATE SET` | 插入冲突处理 |
 
 **示例：**
 
@@ -213,19 +212,7 @@ SELECT user_id, MAX(username) AS username, MAX(department) AS department, COUNT(
 FROM orders GROUP BY user_id;
 ```
 
-## 6. INSERT ON DUPLICATE KEY
-
-```sql
--- MySQL
-INSERT INTO user(id, name, score) VALUES(1, '张三', 100)
-ON DUPLICATE KEY UPDATE score = VALUES(score);
-
--- GaussDB
-INSERT INTO user(id, name, score) VALUES(1, '张三', 100)
-ON CONFLICT (id) DO UPDATE SET score = EXCLUDED.score;
-```
-
-## 7. ORDER BY 排序 NULL 值处理
+## 6. ORDER BY 排序 NULL 值处理
 
 GaussDB 中 NULL 值的默认排序行为与 MySQL 不同，需要显式指定：
 
@@ -251,7 +238,7 @@ SELECT * FROM user ORDER BY create_time DESC NULLS LAST;
 SELECT * FROM user ORDER BY status ASC NULLS FIRST, create_time DESC NULLS LAST;
 ```
 
-## 8. 兼容的 MySQL 语法（无需转换）
+## 7. 兼容的 MySQL 语法（无需转换）
 
 以下语法 GaussDB 直接兼容：
 - `LIMIT offset, count` - 分页语法
@@ -262,7 +249,7 @@ SELECT * FROM user ORDER BY status ASC NULLS FIRST, create_time DESC NULLS LAST;
 - `TRIM()`, `UPPER()`, `LOWER()` - 字符串函数
 - `ABS()`, `ROUND()`, `CEIL()`, `FLOOR()` - 数学函数
 
-## 9. 注意事项
+## 8. 注意事项
 
 **XML 转义字符保留：**
 - `&lt;` 不需要改成 `<`
@@ -271,7 +258,7 @@ SELECT * FROM user ORDER BY status ASC NULLS FIRST, create_time DESC NULLS LAST;
 
 这些是 XML 的标准转义，在 MyBatis Mapper XML 中用于比较运算符，必须保留。
 
-## 10. 迁移完整性校验
+## 9. 迁移完整性校验
 
 转换完成后，执行以下检查确保没有遗漏。
 
@@ -303,9 +290,6 @@ grep -r "JSON_CONTAINS" --include="*.xml" --include="*.java"
 
 # 检查 ANY_VALUE（应为 MAX）
 grep -r "ANY_VALUE" --include="*.xml" --include="*.java"
-
-# 检查 ON DUPLICATE KEY（应为 ON CONFLICT）
-grep -r "ON DUPLICATE KEY" --include="*.xml" --include="*.java"
 
 # ========== 日期函数检查（重点） ==========
 # 检查 DATE_FORMAT（应为 TO_CHAR）
@@ -375,7 +359,6 @@ grep -rE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
 | JSON_OBJECT | `grep -r "JSON_OBJECT"` | 无匹配 |
 | JSON_CONTAINS | `grep -r "JSON_CONTAINS"` | 无匹配 |
 | ANY_VALUE | `grep -r "ANY_VALUE"` | 无匹配 |
-| ON DUPLICATE KEY | `grep -r "ON DUPLICATE KEY"` | 无匹配 |
 
 **日期时间函数：**
 
@@ -429,9 +412,6 @@ grep -rE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
    - TIMESTAMPDIFF 已转为 EXTRACT
    - YEAR/MONTH/DAY 已转为 EXTRACT
 
-✅ 插入语句
-   - ON DUPLICATE KEY 已转为 ON CONFLICT
-
 ⚠️ 待人工检查项（如有）
    - GROUP BY 语句：确认非聚合列已用 MAX() 包装
    - SELECT EXISTS：如需返回 0/1 需转为 (EXISTS(...))::int
@@ -448,7 +428,7 @@ grep -rE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
 待处理: XX 处
 ```
 
-## 11. 完整转换示例
+## 10. 完整转换示例
 
 ```xml
 <!-- ========== MySQL 原始 Mapper ========== -->
