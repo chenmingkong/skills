@@ -336,6 +336,9 @@ grep -rE "\bDAYOF(WEEK|MONTH|YEAR)\s*\(" --include="*.xml" --include="*.java"
 grep -rE "ORDER\s+BY" --include="*.xml" --include="*.java"
 
 # ========== 需人工检查 ==========
+# 检查 ON DUPLICATE KEY UPDATE（需人工转换为 ON CONFLICT）
+grep -r "ON DUPLICATE KEY" --include="*.xml" --include="*.java"
+
 # 检查 GROUP BY 语句（确认非聚合列已处理）
 grep -rE "GROUP\s+BY" --include="*.xml" --include="*.java"
 
@@ -387,6 +390,7 @@ grep -rE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
 
 | 检查项 | 命令 | 期望结果 |
 |--------|------|----------|
+| ON DUPLICATE KEY | `grep -r "ON DUPLICATE KEY"` | 需人工转换为 ON CONFLICT |
 | ORDER BY | `grep -rE "ORDER\s+BY"` | 需人工检查 NULLS FIRST/LAST |
 | GROUP BY | `grep -rE "GROUP\s+BY"` | 需人工检查非聚合列 |
 | SELECT EXISTS | `grep -rE "SELECT\s+EXISTS"` | 需人工检查返回值 |

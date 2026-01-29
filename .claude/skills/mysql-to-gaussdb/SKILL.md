@@ -325,6 +325,9 @@ grep -rE "\b(YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)\s*\(" --include="*.xml" --includ
 # 检查 ORDER BY 语句（需人工确认 NULLS FIRST/LAST）
 grep -rE "ORDER\s+BY" --include="*.xml" --include="*.sql" --include="*.java"
 
+# 检查 ON DUPLICATE KEY UPDATE（需人工转换为 ON CONFLICT）
+grep -r "ON DUPLICATE KEY" --include="*.xml" --include="*.sql" --include="*.java"
+
 # 检查 GROUP BY 语句（需人工确认非聚合列是否都已处理）
 grep -rE "GROUP\s+BY" --include="*.xml" --include="*.sql" --include="*.java"
 
@@ -389,6 +392,7 @@ grep -rE "CREATE\s+(UNIQUE\s+)?INDEX\s+idx_" --include="*.sql"
 | DATE | `grep -rE "\bDATE\s*\("` | 无匹配 |
 | YEAR/MONTH/DAY | `grep -rE "\b(YEAR\|MONTH\|DAY)\s*\("` | 无匹配 |
 | HOUR/MINUTE/SECOND | `grep -rE "\b(HOUR\|MINUTE\|SECOND)\s*\("` | 无匹配 |
+| ON DUPLICATE KEY | `grep -r "ON DUPLICATE KEY"` | 需人工转换为 ON CONFLICT |
 | ORDER BY | `grep -rE "ORDER\s+BY"` | 需人工检查 NULLS FIRST/LAST |
 | GROUP BY | `grep -rE "GROUP\s+BY"` | 需人工检查非聚合列 |
 | SELECT EXISTS | `grep -rE "SELECT\s+EXISTS"` | 需人工检查返回值 |
