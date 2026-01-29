@@ -57,7 +57,8 @@ INSERT INTO user(name) VALUES('李四');
 | `IF(cond, a, b)` | `CASE WHEN cond THEN a ELSE b END` | 条件判断 |
 | `GROUP_CONCAT(col)` | `STRING_AGG(col::text, ',')` | 字符串聚合 |
 | `GROUP_CONCAT(col SEPARATOR ';')` | `STRING_AGG(col::text, ';')` | 指定分隔符 |
-| `JSON_OBJECT(k1, v1, k2, v2)` | `json_build_object(k1, v1, k2, v2)` | 构建JSON对象 |
+| `JSON_OBJECT(k1, v1, k2, v2)` | `json_build_object(k1, v1, k2, v2)` | 构建JSON对象（多键值对） |
+| `JSON_OBJECT(key, value)` | `json_build_object(key, value)` | 构建JSON对象（单键值对） |
 | `JSON_CONTAINS(col, json_val)` | `col::jsonb @> json_val::jsonb` | JSON包含检查 |
 | `ANY_VALUE(col)` | `MAX(col)` | 任意值 |
 | `SELECT EXISTS(...)` | `SELECT (EXISTS(...))::int` | EXISTS返回0/1 |
@@ -71,12 +72,16 @@ SELECT IFNULL(nickname, username) AS display_name FROM user;
 SELECT IF(status = 1, '启用', '禁用') AS status_text FROM user;
 SELECT department, GROUP_CONCAT(name) AS members FROM user GROUP BY department;
 SELECT * FROM article WHERE JSON_CONTAINS(dataset, '{"隐私":[]}');
+SELECT JSON_OBJECT('scene', 'test', 'count', '1') AS config;  -- 多键值对
+SELECT JSON_OBJECT('test', '1') AS data;  -- 单键值对
 
 -- GaussDB
 SELECT COALESCE(nickname, username) AS display_name FROM user;
 SELECT CASE WHEN status = 1 THEN '启用' ELSE '禁用' END AS status_text FROM user;
 SELECT department, STRING_AGG(name::text, ',') AS members FROM user GROUP BY department;
 SELECT * FROM article WHERE dataset::jsonb @> '{"隐私":[]}'::jsonb;
+SELECT json_build_object('scene', 'test', 'count', '1') AS config;  -- 多键值对
+SELECT json_build_object('test', '1') AS data;  -- 单键值对
 ```
 
 ## 4. 日期时间函数转换（重要）
