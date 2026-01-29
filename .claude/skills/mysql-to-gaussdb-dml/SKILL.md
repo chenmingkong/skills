@@ -21,19 +21,26 @@ argument-hint: "[Mapper文件或目录]"
 MySQL 使用反引号 `` ` `` 包裹表名和字段名，GaussDB 使用双引号 `"`：
 
 ```sql
--- MySQL 写法
+-- MySQL 写法（有反引号）
 SELECT `id`, `user_name` FROM `user` WHERE `status` = 1;
 SELECT `User`.`Name` FROM `User`;
 
--- GaussDB 写法（反引号全部替换为双引号，标识符转小写）
+-- GaussDB 写法（反引号替换为双引号，标识符转小写）
 SELECT "id", "user_name" FROM "user" WHERE "status" = 1;
 SELECT "user"."name" FROM "user";
+
+-- MySQL 写法（无反引号）
+SELECT id, user_name FROM user WHERE status = 1;
+
+-- GaussDB 写法（保持原样，不加双引号）
+SELECT id, user_name FROM user WHERE status = 1;
 ```
 
 **转换规则：**
 - `` `identifier` `` → `"identifier"` （反引号替换为双引号）
 - `` `TableName` `` → `"tablename"` （大写必须转为小写）
 - `` `table`.`column` `` → `"table"."column"` （表名.字段名同样处理）
+- `identifier` → `identifier` （无反引号则保持原样，不加双引号）
 
 ## 2. 字符串值引号转换
 
