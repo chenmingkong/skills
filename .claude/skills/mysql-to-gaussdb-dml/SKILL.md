@@ -58,6 +58,7 @@ INSERT INTO user(name) VALUES('李四');
 | `GROUP_CONCAT(col)` | `STRING_AGG(col::text, ',')` | 字符串聚合 |
 | `GROUP_CONCAT(col SEPARATOR ';')` | `STRING_AGG(col::text, ';')` | 指定分隔符 |
 | `JSON_OBJECT(k1, v1, k2, v2)` | `json_build_object(k1, v1, k2, v2)` | 构建JSON对象 |
+| `JSON_CONTAINS(col, json_val)` | `col::jsonb @> json_val::jsonb` | JSON包含检查 |
 | `ANY_VALUE(col)` | `MAX(col)` | 任意值 |
 | `SELECT EXISTS(...)` | `SELECT (EXISTS(...))::int` | EXISTS返回0/1 |
 | `ON DUPLICATE KEY UPDATE` | `ON CONFLICT (key) DO UPDATE SET` | 插入冲突处理 |
@@ -69,11 +70,13 @@ INSERT INTO user(name) VALUES('李四');
 SELECT IFNULL(nickname, username) AS display_name FROM user;
 SELECT IF(status = 1, '启用', '禁用') AS status_text FROM user;
 SELECT department, GROUP_CONCAT(name) AS members FROM user GROUP BY department;
+SELECT * FROM article WHERE JSON_CONTAINS(dataset, '{"隐私":[]}');
 
 -- GaussDB
 SELECT COALESCE(nickname, username) AS display_name FROM user;
 SELECT CASE WHEN status = 1 THEN '启用' ELSE '禁用' END AS status_text FROM user;
 SELECT department, STRING_AGG(name::text, ',') AS members FROM user GROUP BY department;
+SELECT * FROM article WHERE dataset::jsonb @> '{"隐私":[]}'::jsonb;
 ```
 
 ## 4. 日期时间函数转换（重要）
@@ -253,6 +256,9 @@ grep -r "GROUP_CONCAT" --include="*.xml" --include="*.java"
 # 检查 JSON_OBJECT（应为 json_build_object）
 grep -r "JSON_OBJECT" --include="*.xml" --include="*.java"
 
+# 检查 JSON_CONTAINS（应为 ::jsonb @> ::jsonb）
+grep -r "JSON_CONTAINS" --include="*.xml" --include="*.java"
+
 # 检查 ANY_VALUE（应为 MAX）
 grep -r "ANY_VALUE" --include="*.xml" --include="*.java"
 
@@ -319,6 +325,7 @@ grep -rE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
 | YEAR/MONTH/DAY | `grep -rE "\b(YEAR\|MONTH\|DAY)\s*\("` | 无匹配 |
 | GROUP_CONCAT | `grep -r "GROUP_CONCAT"` | 无匹配 |
 | JSON_OBJECT | `grep -r "JSON_OBJECT"` | 无匹配 |
+| JSON_CONTAINS | `grep -r "JSON_CONTAINS"` | 无匹配 |
 | ANY_VALUE | `grep -r "ANY_VALUE"` | 无匹配 |
 | ON DUPLICATE KEY | `grep -r "ON DUPLICATE KEY"` | 无匹配 |
 | GROUP BY | `grep -rE "GROUP BY"` | 需人工检查非聚合列 |
