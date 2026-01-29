@@ -166,7 +166,7 @@ SELECT json_build_object('test', '1') AS data;  -- 单键值对
 
 | MySQL | GaussDB | 说明 |
 |-------|---------|------|
-| `DATE(datetime)` | `datetime::date` 或 `CAST(datetime AS DATE)` | 提取日期 |
+| `DATE(datetime)` | `TO_CHAR(datetime, 'YYYY-MM-DD')` | 提取日期 |
 | `TIME(datetime)` | `datetime::time` 或 `CAST(datetime AS TIME)` | 提取时间 |
 | `YEAR(date)` | `EXTRACT(YEAR FROM date)` | 提取年份 |
 | `MONTH(date)` | `EXTRACT(MONTH FROM date)` | 提取月份 |

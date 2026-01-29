@@ -138,7 +138,7 @@ SELECT "user"."name" FROM "user";
 | `TIMESTAMPDIFF(HOUR, start, end)` | `EXTRACT(EPOCH FROM (end - start))::INTEGER / 3600` | 时间差（小时） |
 | `TIMESTAMPDIFF(MINUTE, start, end)` | `EXTRACT(EPOCH FROM (end - start))::INTEGER / 60` | 时间差（分钟） |
 | `TIMESTAMPDIFF(SECOND, start, end)` | `EXTRACT(EPOCH FROM (end - start))::INTEGER` | 时间差（秒） |
-| `DATE(datetime)` | `datetime::date` 或 `CAST(datetime AS DATE)` | 提取日期部分 |
+| `DATE(datetime)` | `TO_CHAR(datetime, 'YYYY-MM-DD')` | 提取日期部分 |
 | `TIME(datetime)` | `datetime::time` 或 `CAST(datetime AS TIME)` | 提取时间部分 |
 | `YEAR(date)` | `EXTRACT(YEAR FROM date)` | 提取年份 |
 | `MONTH(date)` | `EXTRACT(MONTH FROM date)` | 提取月份 |
