@@ -319,6 +319,7 @@ grep -rE "UNIX_TIMESTAMP|FROM_UNIXTIME" --include="*.xml" --include="*.sql" --in
 grep -rE "CURDATE|CURTIME|SYSDATE" --include="*.xml" --include="*.sql" --include="*.java"
 grep -rE "DATE_ADD|DATE_SUB" --include="*.xml" --include="*.sql" --include="*.java"
 grep -rE "DATEDIFF|TIMESTAMPDIFF" --include="*.xml" --include="*.sql" --include="*.java"
+grep -rE "\bDATE\s*\(" --include="*.xml" --include="*.sql" --include="*.java"
 grep -rE "\b(YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)\s*\(" --include="*.xml" --include="*.sql" --include="*.java"
 
 # 检查 ORDER BY 语句（需人工确认 NULLS FIRST/LAST）
@@ -385,6 +386,7 @@ grep -rE "CREATE\s+(UNIQUE\s+)?INDEX\s+idx_" --include="*.sql"
 | DATE_ADD/DATE_SUB | `grep -rE "DATE_ADD\|DATE_SUB"` | 无匹配 |
 | DATEDIFF | `grep -r "DATEDIFF"` | 无匹配 |
 | TIMESTAMPDIFF | `grep -r "TIMESTAMPDIFF"` | 无匹配 |
+| DATE | `grep -rE "\bDATE\s*\("` | 无匹配 |
 | YEAR/MONTH/DAY | `grep -rE "\b(YEAR\|MONTH\|DAY)\s*\("` | 无匹配 |
 | HOUR/MINUTE/SECOND | `grep -rE "\b(HOUR\|MINUTE\|SECOND)\s*\("` | 无匹配 |
 | ORDER BY | `grep -rE "ORDER\s+BY"` | 需人工检查 NULLS FIRST/LAST |

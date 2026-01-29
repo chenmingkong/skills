@@ -322,6 +322,9 @@ grep -r "DATEDIFF" --include="*.xml" --include="*.java"
 # 检查 TIMESTAMPDIFF
 grep -r "TIMESTAMPDIFF" --include="*.xml" --include="*.java"
 
+# 检查 DATE（应为 TO_CHAR）
+grep -rE "\bDATE\s*\(" --include="*.xml" --include="*.java"
+
 # 检查日期提取函数 YEAR/MONTH/DAY/HOUR/MINUTE/SECOND
 grep -rE "\b(YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)\s*\(" --include="*.xml" --include="*.java"
 
@@ -375,6 +378,7 @@ grep -rE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
 | DATE_SUB | `grep -r "DATE_SUB"` | 无匹配 |
 | DATEDIFF | `grep -r "DATEDIFF"` | 无匹配 |
 | TIMESTAMPDIFF | `grep -r "TIMESTAMPDIFF"` | 无匹配 |
+| DATE | `grep -rE "\bDATE\s*\("` | 无匹配 |
 | YEAR/MONTH/DAY | `grep -rE "\b(YEAR\|MONTH\|DAY)\s*\("` | 无匹配 |
 | HOUR/MINUTE/SECOND | `grep -rE "\b(HOUR\|MINUTE\|SECOND)\s*\("` | 无匹配 |
 | DAYOFWEEK/DAYOFMONTH/DAYOFYEAR | `grep -rE "\bDAYOF(WEEK\|MONTH\|YEAR)\s*\("` | 无匹配 |
