@@ -16,6 +16,18 @@ argument-hint: "[SQL文件或目录]"
 **/migration/**/*.sql                # 迁移脚本
 ```
 
+## 输出文件
+
+转换完成后，将转换后的 SQL 文件输出到原文件同一目录，文件名为原文件名 + `_gauss` 后缀：
+
+| 原文件 | 转换后文件 |
+|--------|-----------|
+| `schema.sql` | `schema_gauss.sql` |
+| `data.sql` | `data_gauss.sql` |
+| `migration/V1__init.sql` | `migration/V1__init_gauss.sql` |
+
+**注意：** 原文件保持不变，转换后的内容写入新文件。
+
 ## 1. 数据类型转换
 
 | MySQL | GaussDB | 说明 |
@@ -280,20 +292,21 @@ grep -rE "ROW_FORMAT\s*=" --include="*.sql"
 | 检查项 | 命令 | 期望结果 |
 |--------|------|----------|
 | AUTO_INCREMENT | `grep -r "AUTO_INCREMENT"` | 无匹配 |
-| ENGINE= | `grep -r "ENGINE="` | 无匹配 |
+| ENGINE= | `grep -rE "ENGINE\s*="` | 无匹配 |
 | UNSIGNED | `grep -r "UNSIGNED"` | 无匹配 |
-| CHARSET= | `grep -r "CHARSET="` | 无匹配 |
-| COLLATE= | `grep -r "COLLATE="` | 无匹配 |
+| CHARSET= | `grep -rE "CHARSET\s*="` | 无匹配 |
+| COLLATE= | `grep -rE "COLLATE\s*="` | 无匹配 |
+| ROW_FORMAT= | `grep -rE "ROW_FORMAT\s*="` | 无匹配 |
 | ON UPDATE CURRENT_TIMESTAMP | `grep -r "ON UPDATE CURRENT_TIMESTAMP"` | 无匹配 |
 | 反引号 | `grep -r "\`"` | 无匹配 |
 | 零值时间 | `grep -rE "DEFAULT.*0000-00-00"` | 无匹配 |
 | 内联 COMMENT | `grep -rE "COMMENT\s*'"` | 无匹配 |
 | VARCHAR | `grep -rE "\bVARCHAR\s*\("` | 无匹配（应为 NVARCHAR2） |
-| 索引名前缀 | `grep -rE "CREATE\s+INDEX\s+idx_"` | 应含表名前缀 |
+| 索引名前缀 | `grep -rE "CREATE\s+(UNIQUE\s+)?INDEX\s+idx_"` | 应含表名前缀 |
 
 ### 9.3 生成校验报告
 
-扫描完成后输出报告：
+扫描完成后，将报告输出到项目根目录下的 `ddl_完整性校验报告.txt` 文件：
 
 ```
 ============ DDL 迁移校验报告 ============

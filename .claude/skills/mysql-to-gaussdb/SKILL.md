@@ -303,34 +303,48 @@ grep -r "MySQLDialect\|MySQL5Dialect\|MySQL8Dialect" --include="*.yml" --include
 # 检查 PageHelper 方言配置（应为 postgresql）
 grep -r "helper-dialect" --include="*.yml" --include="*.properties" --include="*.xml"
 
-# ========== SQL 语法检查 ==========
+# ========== DML 语法检查（查询、函数） ==========
 # 检查是否还有反引号（MySQL 特有）
-grep -r "\`" --include="*.xml" --include="*.sql"
+grep -r "\`" --include="*.xml" --include="*.sql" --include="*.java"
 
-# 检查 DML 中使用双引号包围字符串值（GaussDB 双引号仅用于标识符）
-grep -rE "=\"[^\"]+\"" --include="*.xml" --include="*.sql"
+# 检查双引号包围字符串值（GaussDB 双引号仅用于标识符）
+grep -rE "=\s*\"[^\"]+\"" --include="*.xml" --include="*.sql" --include="*.java"
 
-# 检查未转换的 MySQL 函数
-grep -rE "IFNULL|GROUP_CONCAT|JSON_OBJECT|ANY_VALUE" --include="*.xml" --include="*.sql" --include="*.java"
+# 检查未转换的通用函数
+grep -rE "IFNULL|GROUP_CONCAT|JSON_OBJECT|JSON_CONTAINS|ANY_VALUE" --include="*.xml" --include="*.sql" --include="*.java"
+grep -rE "\bIF\s*\(" --include="*.xml" --include="*.sql" --include="*.java"
 
 # 检查未转换的 MySQL 日期函数（重点检查）
-grep -rE "DATE_FORMAT|UNIX_TIMESTAMP|FROM_UNIXTIME|CURDATE|CURTIME|DATE_ADD|DATE_SUB|DATEDIFF|TIMESTAMPDIFF|STR_TO_DATE|YEAR\(|MONTH\(|DAY\(|HOUR\(|MINUTE\(|SECOND\(" --include="*.xml" --include="*.sql" --include="*.java"
+grep -rE "DATE_FORMAT|STR_TO_DATE" --include="*.xml" --include="*.sql" --include="*.java"
+grep -rE "UNIX_TIMESTAMP|FROM_UNIXTIME" --include="*.xml" --include="*.sql" --include="*.java"
+grep -rE "CURDATE|CURTIME|SYSDATE" --include="*.xml" --include="*.sql" --include="*.java"
+grep -rE "DATE_ADD|DATE_SUB" --include="*.xml" --include="*.sql" --include="*.java"
+grep -rE "DATEDIFF|TIMESTAMPDIFF" --include="*.xml" --include="*.sql" --include="*.java"
+grep -rE "\b(YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)\s*\(" --include="*.xml" --include="*.sql" --include="*.java"
 
 # 检查 ON DUPLICATE KEY
 grep -r "ON DUPLICATE KEY" --include="*.xml" --include="*.sql" --include="*.java"
 
+# 检查 ORDER BY 语句（需人工确认 NULLS FIRST/LAST）
+grep -rE "ORDER\s+BY" --include="*.xml" --include="*.sql" --include="*.java"
+
 # 检查 GROUP BY 语句（需人工确认非聚合列是否都已处理）
-grep -rE "GROUP BY" --include="*.xml" --include="*.sql" --include="*.java"
+grep -rE "GROUP\s+BY" --include="*.xml" --include="*.sql" --include="*.java"
 
 # 检查 EXISTS 返回值（如需返回 0/1 需转换为 (EXISTS(...))::int）
 grep -rE "SELECT\s+EXISTS" --include="*.xml" --include="*.sql" --include="*.java"
 
-# ========== DDL 语法检查 ==========
+# ========== DDL 语法检查（建表、索引） ==========
 # 检查 MySQL 特有的 DDL 语法
-grep -rE "AUTO_INCREMENT|ENGINE=|UNSIGNED|CHARSET=|ON UPDATE CURRENT_TIMESTAMP" --include="*.sql"
+grep -rE "AUTO_INCREMENT" --include="*.sql"
+grep -rE "ENGINE\s*=" --include="*.sql"
+grep -rE "\bUNSIGNED\b" --include="*.sql"
+grep -rE "CHARSET\s*=|COLLATE\s*=" --include="*.sql"
+grep -rE "ON\s+UPDATE\s+CURRENT_TIMESTAMP" --include="*.sql"
+grep -rE "ROW_FORMAT\s*=" --include="*.sql"
 
 # 检查零值时间默认值
-grep -rE "DEFAULT\s*'0+(-0+){2}\s+0+(:0+){2}'" --include="*.sql"
+grep -rE "DEFAULT\s*'0+(-0+){2}" --include="*.sql"
 
 # 检查字段定义中的 COMMENT（需转为 COMMENT ON COLUMN）
 grep -rE "COMMENT\s*'" --include="*.sql"
@@ -339,10 +353,12 @@ grep -rE "COMMENT\s*'" --include="*.sql"
 grep -rE "\bVARCHAR\s*\(" --include="*.sql"
 
 # 检查索引名是否包含表名前缀（避免同 schema 索引名重复）
-grep -rE "CREATE\s+INDEX\s+idx_" --include="*.sql"
+grep -rE "CREATE\s+(UNIQUE\s+)?INDEX\s+idx_" --include="*.sql"
 ```
 
 #### 6.2 校验清单
+
+**依赖和配置：**
 
 | 检查项 | 命令 | 期望结果 |
 |--------|------|----------|
@@ -351,14 +367,44 @@ grep -rE "CREATE\s+INDEX\s+idx_" --include="*.sql"
 | JDBC URL | `grep -r "jdbc:mysql"` | 无匹配 |
 | MySQL 方言 | `grep -r "MySQLDialect"` | 无匹配 |
 | PageHelper 方言 | `grep -r "helper-dialect"` | postgresql |
+
+**DML 语法（查询、函数）：**
+
+| 检查项 | 命令 | 期望结果 |
+|--------|------|----------|
 | 反引号 | `grep -r "\`"` | 无匹配 |
 | 双引号字符串 | `grep -rE "=\"[^\"]+\""` | 无匹配 |
-| IFNULL 函数 | `grep -r "IFNULL"` | 无匹配 |
-| DATE_FORMAT | `grep -r "DATE_FORMAT"` | 无匹配 |
+| IFNULL | `grep -r "IFNULL"` | 无匹配 |
+| IF( | `grep -rE "\bIF\s*\("` | 无匹配 |
+| GROUP_CONCAT | `grep -r "GROUP_CONCAT"` | 无匹配 |
 | JSON_OBJECT | `grep -r "JSON_OBJECT"` | 无匹配 |
+| JSON_CONTAINS | `grep -r "JSON_CONTAINS"` | 无匹配 |
 | ANY_VALUE | `grep -r "ANY_VALUE"` | 无匹配 |
-| AUTO_INCREMENT | `grep -r "AUTO_INCREMENT"` | 无匹配 |
 | ON DUPLICATE KEY | `grep -r "ON DUPLICATE KEY"` | 无匹配 |
+| DATE_FORMAT | `grep -r "DATE_FORMAT"` | 无匹配 |
+| STR_TO_DATE | `grep -r "STR_TO_DATE"` | 无匹配 |
+| UNIX_TIMESTAMP | `grep -r "UNIX_TIMESTAMP"` | 无匹配 |
+| FROM_UNIXTIME | `grep -r "FROM_UNIXTIME"` | 无匹配 |
+| CURDATE | `grep -r "CURDATE"` | 无匹配 |
+| CURTIME | `grep -r "CURTIME"` | 无匹配 |
+| DATE_ADD/DATE_SUB | `grep -rE "DATE_ADD\|DATE_SUB"` | 无匹配 |
+| DATEDIFF | `grep -r "DATEDIFF"` | 无匹配 |
+| TIMESTAMPDIFF | `grep -r "TIMESTAMPDIFF"` | 无匹配 |
+| YEAR/MONTH/DAY | `grep -rE "\b(YEAR\|MONTH\|DAY)\s*\("` | 无匹配 |
+| HOUR/MINUTE/SECOND | `grep -rE "\b(HOUR\|MINUTE\|SECOND)\s*\("` | 无匹配 |
+| ORDER BY | `grep -rE "ORDER\s+BY"` | 需人工检查 NULLS FIRST/LAST |
+| GROUP BY | `grep -rE "GROUP\s+BY"` | 需人工检查非聚合列 |
+| SELECT EXISTS | `grep -rE "SELECT\s+EXISTS"` | 需人工检查返回值 |
+
+**DDL 语法（建表、索引）：**
+
+| 检查项 | 命令 | 期望结果 |
+|--------|------|----------|
+| AUTO_INCREMENT | `grep -r "AUTO_INCREMENT"` | 无匹配 |
+| ENGINE= | `grep -rE "ENGINE\s*="` | 无匹配 |
+| UNSIGNED | `grep -r "UNSIGNED"` | 无匹配 |
+| CHARSET= | `grep -rE "CHARSET\s*="` | 无匹配 |
+| COLLATE= | `grep -rE "COLLATE\s*="` | 无匹配 |
 | ON UPDATE CURRENT_TIMESTAMP | `grep -r "ON UPDATE CURRENT_TIMESTAMP"` | 无匹配 |
 | 零值时间默认值 | `grep -rE "DEFAULT.*0000-00-00"` | 无匹配 |
 | 内联 COMMENT | `grep -rE "COMMENT\s*'"` | 无匹配 |

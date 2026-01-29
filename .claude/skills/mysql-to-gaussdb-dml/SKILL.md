@@ -324,6 +324,9 @@ grep -r "CURDATE" --include="*.xml" --include="*.java"
 # 检查 CURTIME（应为 CURRENT_TIME）
 grep -r "CURTIME" --include="*.xml" --include="*.java"
 
+# 检查 SYSDATE（应为 NOW）
+grep -r "SYSDATE" --include="*.xml" --include="*.java"
+
 # 检查 DATE_ADD/DATE_SUB
 grep -rE "DATE_ADD|DATE_SUB" --include="*.xml" --include="*.java"
 
@@ -335,6 +338,9 @@ grep -r "TIMESTAMPDIFF" --include="*.xml" --include="*.java"
 
 # 检查日期提取函数 YEAR/MONTH/DAY/HOUR/MINUTE/SECOND
 grep -rE "\b(YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)\s*\(" --include="*.xml" --include="*.java"
+
+# 检查 DAYOFWEEK/DAYOFMONTH/DAYOFYEAR
+grep -rE "\bDAYOF(WEEK|MONTH|YEAR)\s*\(" --include="*.xml" --include="*.java"
 
 # ========== ORDER BY 检查 ==========
 # 检查 ORDER BY 是否添加了 NULLS FIRST/LAST
@@ -350,35 +356,55 @@ grep -rE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
 
 ### 10.2 校验清单
 
+**标识符和字符串：**
+
 | 检查项 | 命令 | 期望结果 |
 |--------|------|----------|
 | 反引号 | `grep -r "\`"` | 无匹配 |
-| 双引号字符串 | `grep -rE "=\"[^\"]+\""` | 无匹配 |
+| 双引号字符串 | `grep -rE "=\s*\"[^\"]+\""` | 无匹配 |
+
+**通用函数：**
+
+| 检查项 | 命令 | 期望结果 |
+|--------|------|----------|
 | IFNULL | `grep -r "IFNULL"` | 无匹配 |
 | IF( | `grep -rE "\bIF\s*\("` | 无匹配 |
+| GROUP_CONCAT | `grep -r "GROUP_CONCAT"` | 无匹配 |
+| JSON_OBJECT | `grep -r "JSON_OBJECT"` | 无匹配 |
+| JSON_CONTAINS | `grep -r "JSON_CONTAINS"` | 无匹配 |
+| ANY_VALUE | `grep -r "ANY_VALUE"` | 无匹配 |
+| ON DUPLICATE KEY | `grep -r "ON DUPLICATE KEY"` | 无匹配 |
+
+**日期时间函数：**
+
+| 检查项 | 命令 | 期望结果 |
+|--------|------|----------|
 | DATE_FORMAT | `grep -r "DATE_FORMAT"` | 无匹配 |
 | STR_TO_DATE | `grep -r "STR_TO_DATE"` | 无匹配 |
 | UNIX_TIMESTAMP | `grep -r "UNIX_TIMESTAMP"` | 无匹配 |
 | FROM_UNIXTIME | `grep -r "FROM_UNIXTIME"` | 无匹配 |
 | CURDATE | `grep -r "CURDATE"` | 无匹配 |
 | CURTIME | `grep -r "CURTIME"` | 无匹配 |
+| SYSDATE | `grep -r "SYSDATE"` | 无匹配 |
 | DATE_ADD | `grep -r "DATE_ADD"` | 无匹配 |
 | DATE_SUB | `grep -r "DATE_SUB"` | 无匹配 |
 | DATEDIFF | `grep -r "DATEDIFF"` | 无匹配 |
 | TIMESTAMPDIFF | `grep -r "TIMESTAMPDIFF"` | 无匹配 |
 | YEAR/MONTH/DAY | `grep -rE "\b(YEAR\|MONTH\|DAY)\s*\("` | 无匹配 |
-| GROUP_CONCAT | `grep -r "GROUP_CONCAT"` | 无匹配 |
-| JSON_OBJECT | `grep -r "JSON_OBJECT"` | 无匹配 |
-| JSON_CONTAINS | `grep -r "JSON_CONTAINS"` | 无匹配 |
-| ANY_VALUE | `grep -r "ANY_VALUE"` | 无匹配 |
-| ON DUPLICATE KEY | `grep -r "ON DUPLICATE KEY"` | 无匹配 |
+| HOUR/MINUTE/SECOND | `grep -rE "\b(HOUR\|MINUTE\|SECOND)\s*\("` | 无匹配 |
+| DAYOFWEEK/DAYOFMONTH/DAYOFYEAR | `grep -rE "\bDAYOF(WEEK\|MONTH\|YEAR)\s*\("` | 无匹配 |
+
+**需人工检查：**
+
+| 检查项 | 命令 | 期望结果 |
+|--------|------|----------|
 | ORDER BY | `grep -rE "ORDER\s+BY"` | 需人工检查 NULLS FIRST/LAST |
-| GROUP BY | `grep -rE "GROUP BY"` | 需人工检查非聚合列 |
+| GROUP BY | `grep -rE "GROUP\s+BY"` | 需人工检查非聚合列 |
 | SELECT EXISTS | `grep -rE "SELECT\s+EXISTS"` | 需人工检查返回值 |
 
 ### 10.3 生成校验报告
 
-扫描完成后输出报告：
+扫描完成后，将报告输出到项目根目录下的 `dml_完整性校验报告.txt` 文件：
 
 ```
 ============ DML 迁移校验报告 ============
