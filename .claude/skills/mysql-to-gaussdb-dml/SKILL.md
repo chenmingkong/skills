@@ -414,52 +414,105 @@ SELECT * FROM user ORDER BY status ASC NULLS FIRST, create_time DESC NULLS LAST;
 
 GaussDB 对类型匹配更严格，当字段类型与传入值类型不匹配时，需要显式类型转换。
 
-### 7.1 INT 字段类型转换
+**重要：必须先扫描 DDL/SQL 文件获取表的字段类型！**
 
-当数据库字段类型为 `INT`/`INTEGER`/`BIGINT`，而传入的是字符串类型（如 MyBatis 参数）时，需要使用 `::int` 转换：
+### 步骤 1：扫描项目中的 SQL 文件，查找 INT 和 JSON 类型字段
 
-```sql
--- MySQL（自动类型转换）
-INSERT INTO user(age, score) VALUES(#{age}, #{score});
-UPDATE user SET age = #{age}, score = #{score} WHERE id = #{id};
+```bash
+# 查找 INT 类型字段（包括 INT, INTEGER, BIGINT, SMALLINT, TINYINT）
+grep -rnE "\b(INT|INTEGER|BIGINT|SMALLINT|TINYINT|int2|int4|int8)\b" --include="*.sql"
 
--- GaussDB（显式类型转换）
-INSERT INTO user(age, score) VALUES(#{age}::int, #{score}::int);
-UPDATE user SET age = #{age}::int, score = #{score}::int WHERE id = #{id};
+# 查找 JSON 类型字段
+grep -rn "\bJSON\b" --include="*.sql"
 ```
 
-### 7.2 JSON 字段类型转换
+### 步骤 2：建立表字段类型映射关系
 
-当数据库字段类型为 `JSON`，而传入的是字符串类型时，需要使用 `::json` 转换：
+扫描 DDL 文件，找到类似以下的定义：
 
 ```sql
--- MySQL（自动类型转换）
-INSERT INTO config(settings, metadata) VALUES(#{settings}, #{metadata});
-UPDATE config SET settings = #{settings}, metadata = #{metadata} WHERE id = #{id};
+-- DDL 文件中的字段类型定义示例
+CREATE TABLE user (
+    id BIGINT PRIMARY KEY,           -- INT 类型
+    age INTEGER,                     -- INT 类型
+    score INT,                       -- INT 类型
+    level SMALLINT,                  -- INT 类型
+    name NVARCHAR2(50),              -- 字符串类型，不需要转换
+    settings JSON,                   -- JSON 类型
+    metadata JSON                    -- JSON 类型
+);
 
--- GaussDB（显式类型转换）
-INSERT INTO config(settings, metadata) VALUES(#{settings}::json, #{metadata}::json);
-UPDATE config SET settings = #{settings}::json, metadata = #{metadata}::json WHERE id = #{id};
+CREATE TABLE config (
+    id BIGINT PRIMARY KEY,
+    user_id INTEGER,                 -- INT 类型
+    options JSON,                    -- JSON 类型
+    extra_data JSON                  -- JSON 类型
+);
 ```
 
-### 7.3 转换规则总结
+### 步骤 3：建立字段类型映射表（转换前先填写）
 
-| 数据库字段类型 | 传入值类型 | MySQL | GaussDB |
-|---------------|-----------|-------|---------|
-| INT/INTEGER | 字符串 | `#{value}` | `#{value}::int` |
-| BIGINT | 字符串 | `#{value}` | `#{value}::int` |
-| SMALLINT | 字符串 | `#{value}` | `#{value}::int2` |
-| JSON | 字符串 | `#{value}` | `#{value}::json` |
+| 表名 | 字段名 | 字段类型 | 需要转换 | 来源文件 |
+|------|--------|---------|---------|----------|
+| user | id | BIGINT | `::int` | schema.sql:10 |
+| user | age | INTEGER | `::int` | schema.sql:11 |
+| user | score | INT | `::int` | schema.sql:12 |
+| user | level | SMALLINT | `::int2` | schema.sql:13 |
+| user | settings | JSON | `::json` | schema.sql:15 |
+| user | metadata | JSON | `::json` | schema.sql:16 |
+| config | user_id | INTEGER | `::int` | schema.sql:22 |
+| config | options | JSON | `::json` | schema.sql:23 |
 
-### 7.4 适用场景
+### 步骤 4：转换 INSERT/UPDATE 语句
 
-这种类型转换主要适用于：
-- MyBatis XML 中的 `#{param}` 参数传入字符串值
-- 动态 SQL 中的字符串拼接值
-- 从外部系统接收的字符串形式数据
-- Java 代码中使用 String 类型传递数值或 JSON
+根据字段类型映射表，为传入字符串的 INT/JSON 字段添加类型转换：
 
-**注意：** 如果 Java 代码中参数类型已经是对应的数值类型（如 `Integer`、`Long`），通常不需要显式转换。主要针对参数为 `String` 类型的情况。
+```sql
+-- MySQL 原始语句
+INSERT INTO user(id, age, score, level, name, settings, metadata)
+VALUES(#{id}, #{age}, #{score}, #{level}, #{name}, #{settings}, #{metadata});
+
+UPDATE user SET
+    age = #{age},
+    score = #{score},
+    level = #{level},
+    name = #{name},
+    settings = #{settings},
+    metadata = #{metadata}
+WHERE id = #{id};
+
+-- GaussDB 转换后（根据字段类型添加转换）
+INSERT INTO user(id, age, score, level, name, settings, metadata)
+VALUES(#{id}::int, #{age}::int, #{score}::int, #{level}::int2, #{name}, #{settings}::json, #{metadata}::json);
+
+UPDATE user SET
+    age = #{age}::int,
+    score = #{score}::int,
+    level = #{level}::int2,
+    name = #{name},                -- 字符串类型不需要转换
+    settings = #{settings}::json,
+    metadata = #{metadata}::json
+WHERE id = #{id}::int;
+```
+
+### 7.1 转换规则总结
+
+| 数据库字段类型 | 传入值类型 | GaussDB 转换 |
+|---------------|-----------|-------------|
+| INT / INTEGER / int4 | 字符串 | `#{value}::int` |
+| BIGINT / int8 | 字符串 | `#{value}::int` |
+| SMALLINT / TINYINT / int2 | 字符串 | `#{value}::int2` |
+| JSON | 字符串 | `#{value}::json` |
+| VARCHAR / NVARCHAR2 / TEXT | 字符串 | 不需要转换 |
+| TIMESTAMP / DATE / TIME | 字符串 | 不需要转换 |
+
+### 7.2 注意事项
+
+- **必须**先扫描 DDL 文件确定表的字段类型，不要猜测
+- 只有当 Java/MyBatis 传入的参数是 `String` 类型时才需要转换
+- 如果 Java 参数类型已经是 `Integer`、`Long` 等数值类型，通常不需要转换
+- WHERE 子句中的 INT 字段比较也需要添加 `::int` 转换
+- 可通过数据库命令 `\d 表名` 查看表结构确认字段类型
 
 ## 8. 兼容的 MySQL 语法（无需转换）
 
@@ -720,52 +773,70 @@ grep -rnE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
 </select>
 
 <!-- ========== GaussDB 转换后 Mapper ========== -->
+<!-- 表名、字段名不加双引号，只有别名加双引号 -->
 <select id="getUserStats" resultType="map">
     SELECT
-        "user_id",
-        "username",
-        TO_CHAR("create_time", 'YYYY-MM-DD') AS create_date,
-        COALESCE("nickname", "username") AS display_name,
-        CASE WHEN "status" = 1 THEN '启用' ELSE '禁用' END AS status_text,
-        EXTRACT(DAY FROM (NOW() - "create_time")) AS days_since_created,
-        (SELECT (EXISTS(SELECT 1 FROM orders WHERE user_id = u.id))::int) AS has_orders
-    FROM "user" u
-    WHERE "status" = 1
-      AND "create_time" &gt;= TO_CHAR(CAST(NOW() AS TIMESTAMP) - INTERVAL '30 DAY', 'YYYY-MM-DD')
+        user_id,
+        username,
+        TO_CHAR(create_time, 'YYYY-MM-DD') AS "createDate",
+        COALESCE(nickname, username) AS "displayName",
+        CASE WHEN status = 1 THEN '启用' ELSE '禁用' END AS "statusText",
+        EXTRACT(DAY FROM (NOW() - create_time)) AS "daysSinceCreated",
+        (SELECT (EXISTS(SELECT 1 FROM orders WHERE user_id = u.id))::int) AS "hasOrders"
+    FROM user u
+    WHERE status = 1
+      AND create_time &gt;= TO_CHAR(CAST(NOW() AS TIMESTAMP) - INTERVAL '30 DAY', 'YYYY-MM-DD')
 </select>
 ```
 
 ### INSERT/UPDATE 类型转换示例
 
+**先扫描 DDL 获取字段类型：**
+```sql
+-- 从 schema.sql 扫描到的 config 表结构
+CREATE TABLE config (
+    id BIGINT PRIMARY KEY,       -- INT 类型
+    user_id INTEGER,             -- INT 类型
+    age INTEGER,                 -- INT 类型
+    score INT,                   -- INT 类型
+    name NVARCHAR2(50),          -- 字符串类型
+    settings JSON,               -- JSON 类型
+    metadata JSON                -- JSON 类型
+);
+```
+
+**根据字段类型进行转换：**
 ```xml
 <!-- ========== MySQL 原始 Mapper ========== -->
 <insert id="insertConfig">
-    INSERT INTO config(user_id, age, score, settings, metadata)
-    VALUES(#{userId}, #{age}, #{score}, #{settings}, #{metadata})
+    INSERT INTO config(user_id, age, score, name, settings, metadata)
+    VALUES(#{userId}, #{age}, #{score}, #{name}, #{settings}, #{metadata})
 </insert>
 
 <update id="updateConfig">
     UPDATE config
     SET age = #{age},
         score = #{score},
+        name = #{name},
         settings = #{settings},
         metadata = #{metadata}
     WHERE user_id = #{userId}
 </update>
 
 <!-- ========== GaussDB 转换后 Mapper ========== -->
-<!-- 假设 age, score 为 INT 类型，settings, metadata 为 JSON 类型 -->
+<!-- 根据 DDL 扫描结果：user_id/age/score 为 INT，settings/metadata 为 JSON -->
 <insert id="insertConfig">
-    INSERT INTO config(user_id, age, score, settings, metadata)
-    VALUES(#{userId}, #{age}::int, #{score}::int, #{settings}::json, #{metadata}::json)
+    INSERT INTO config(user_id, age, score, name, settings, metadata)
+    VALUES(#{userId}::int, #{age}::int, #{score}::int, #{name}, #{settings}::json, #{metadata}::json)
 </insert>
 
 <update id="updateConfig">
     UPDATE config
     SET age = #{age}::int,
         score = #{score}::int,
+        name = #{name},                -- 字符串类型不需要转换
         settings = #{settings}::json,
         metadata = #{metadata}::json
-    WHERE user_id = #{userId}
+    WHERE user_id = #{userId}::int     -- WHERE 中的 INT 字段也需要转换
 </update>
 ```
