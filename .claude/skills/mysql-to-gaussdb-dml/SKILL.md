@@ -238,7 +238,58 @@ SELECT * FROM user ORDER BY create_time DESC NULLS LAST;
 SELECT * FROM user ORDER BY status ASC NULLS FIRST, create_time DESC NULLS LAST;
 ```
 
-## 7. 兼容的 MySQL 语法（无需转换）
+## 7. INSERT/UPDATE 类型转换
+
+GaussDB 对类型匹配更严格，当字段类型与传入值类型不匹配时，需要显式类型转换。
+
+### 7.1 INT 字段类型转换
+
+当数据库字段类型为 `INT`/`INTEGER`/`BIGINT`，而传入的是字符串类型（如 MyBatis 参数）时，需要使用 `::int` 转换：
+
+```sql
+-- MySQL（自动类型转换）
+INSERT INTO user(age, score) VALUES(#{age}, #{score});
+UPDATE user SET age = #{age}, score = #{score} WHERE id = #{id};
+
+-- GaussDB（显式类型转换）
+INSERT INTO user(age, score) VALUES(#{age}::int, #{score}::int);
+UPDATE user SET age = #{age}::int, score = #{score}::int WHERE id = #{id};
+```
+
+### 7.2 JSON 字段类型转换
+
+当数据库字段类型为 `JSON`，而传入的是字符串类型时，需要使用 `::json` 转换：
+
+```sql
+-- MySQL（自动类型转换）
+INSERT INTO config(settings, metadata) VALUES(#{settings}, #{metadata});
+UPDATE config SET settings = #{settings}, metadata = #{metadata} WHERE id = #{id};
+
+-- GaussDB（显式类型转换）
+INSERT INTO config(settings, metadata) VALUES(#{settings}::json, #{metadata}::json);
+UPDATE config SET settings = #{settings}::json, metadata = #{metadata}::json WHERE id = #{id};
+```
+
+### 7.3 转换规则总结
+
+| 数据库字段类型 | 传入值类型 | MySQL | GaussDB |
+|---------------|-----------|-------|---------|
+| INT/INTEGER | 字符串 | `#{value}` | `#{value}::int` |
+| BIGINT | 字符串 | `#{value}` | `#{value}::int` |
+| SMALLINT | 字符串 | `#{value}` | `#{value}::int2` |
+| JSON | 字符串 | `#{value}` | `#{value}::json` |
+
+### 7.4 适用场景
+
+这种类型转换主要适用于：
+- MyBatis XML 中的 `#{param}` 参数传入字符串值
+- 动态 SQL 中的字符串拼接值
+- 从外部系统接收的字符串形式数据
+- Java 代码中使用 String 类型传递数值或 JSON
+
+**注意：** 如果 Java 代码中参数类型已经是对应的数值类型（如 `Integer`、`Long`），通常不需要显式转换。主要针对参数为 `String` 类型的情况。
+
+## 8. 兼容的 MySQL 语法（无需转换）
 
 以下语法 GaussDB 直接兼容：
 - `LIMIT offset, count` - 分页语法
@@ -249,7 +300,7 @@ SELECT * FROM user ORDER BY status ASC NULLS FIRST, create_time DESC NULLS LAST;
 - `TRIM()`, `UPPER()`, `LOWER()` - 字符串函数
 - `ABS()`, `ROUND()`, `CEIL()`, `FLOOR()` - 数学函数
 
-## 8. 注意事项
+## 9. 注意事项
 
 **XML 转义字符保留：**
 - `&lt;` 不需要改成 `<`
@@ -258,7 +309,7 @@ SELECT * FROM user ORDER BY status ASC NULLS FIRST, create_time DESC NULLS LAST;
 
 这些是 XML 的标准转义，在 MyBatis Mapper XML 中用于比较运算符，必须保留。
 
-## 9. 迁移完整性校验
+## 10. 迁移完整性校验
 
 转换完成后，执行以下检查确保没有遗漏。
 
@@ -335,6 +386,13 @@ grep -rE "\bDAYOF(WEEK|MONTH|YEAR)\s*\(" --include="*.xml" --include="*.java"
 # 检查 ORDER BY 是否添加了 NULLS FIRST/LAST
 grep -rE "ORDER\s+BY" --include="*.xml" --include="*.java"
 
+# ========== INSERT/UPDATE 类型转换检查 ==========
+# 检查 INSERT/UPDATE 语句中 INT 字段是否需要 ::int 转换（需人工确认）
+grep -rE "INSERT\s+INTO|UPDATE\s+\w+\s+SET" --include="*.xml" --include="*.java"
+
+# 检查 JSON 字段是否需要 ::json 转换（需人工确认）
+# 注：需结合数据库表结构确认哪些字段是 JSON 类型
+
 # ========== 需人工检查 ==========
 # 检查 ON DUPLICATE KEY UPDATE（需人工转换为 ON CONFLICT）
 grep -r "ON DUPLICATE KEY" --include="*.xml" --include="*.java"
@@ -394,6 +452,8 @@ grep -rE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
 | ORDER BY | `grep -rE "ORDER\s+BY"` | 需人工检查 NULLS FIRST/LAST |
 | GROUP BY | `grep -rE "GROUP\s+BY"` | 需人工检查非聚合列 |
 | SELECT EXISTS | `grep -rE "SELECT\s+EXISTS"` | 需人工检查返回值 |
+| INT 字段类型转换 | `grep -rE "INSERT\s+INTO\|UPDATE\s+\w+\s+SET"` | 需人工检查 INT 字段是否需要 `::int` 转换 |
+| JSON 字段类型转换 | `grep -rE "INSERT\s+INTO\|UPDATE\s+\w+\s+SET"` | 需人工检查 JSON 字段是否需要 `::json` 转换 |
 
 ### 10.3 生成校验报告
 
@@ -423,6 +483,8 @@ grep -rE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
 ⚠️ 待人工检查项（如有）
    - GROUP BY 语句：确认非聚合列已用 MAX() 包装
    - SELECT EXISTS：如需返回 0/1 需转为 (EXISTS(...))::int
+   - INSERT/UPDATE 语句：确认 INT 字段传入字符串时已添加 ::int
+   - INSERT/UPDATE 语句：确认 JSON 字段传入字符串时已添加 ::json
    - UserMapper.xml:45 - 发现反引号
    - OrderMapper.xml:78 - 发现 DATE_FORMAT
 
@@ -436,7 +498,7 @@ grep -rE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
 待处理: XX 处
 ```
 
-## 10. 完整转换示例
+## 11. 完整转换示例
 
 ```xml
 <!-- ========== MySQL 原始 Mapper ========== -->
@@ -468,4 +530,39 @@ grep -rE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
     WHERE "status" = 1
       AND "create_time" &gt;= TO_CHAR(CAST(NOW() AS TIMESTAMP) - INTERVAL '30 DAY', 'YYYY-MM-DD')
 </select>
+```
+
+### INSERT/UPDATE 类型转换示例
+
+```xml
+<!-- ========== MySQL 原始 Mapper ========== -->
+<insert id="insertConfig">
+    INSERT INTO config(user_id, age, score, settings, metadata)
+    VALUES(#{userId}, #{age}, #{score}, #{settings}, #{metadata})
+</insert>
+
+<update id="updateConfig">
+    UPDATE config
+    SET age = #{age},
+        score = #{score},
+        settings = #{settings},
+        metadata = #{metadata}
+    WHERE user_id = #{userId}
+</update>
+
+<!-- ========== GaussDB 转换后 Mapper ========== -->
+<!-- 假设 age, score 为 INT 类型，settings, metadata 为 JSON 类型 -->
+<insert id="insertConfig">
+    INSERT INTO config(user_id, age, score, settings, metadata)
+    VALUES(#{userId}, #{age}::int, #{score}::int, #{settings}::json, #{metadata}::json)
+</insert>
+
+<update id="updateConfig">
+    UPDATE config
+    SET age = #{age}::int,
+        score = #{score}::int,
+        settings = #{settings}::json,
+        metadata = #{metadata}::json
+    WHERE user_id = #{userId}
+</update>
 ```
