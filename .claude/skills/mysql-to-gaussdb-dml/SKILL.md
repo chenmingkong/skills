@@ -44,6 +44,32 @@ SELECT id, user_name FROM user WHERE status = 1;
 - `` `table`.`column` `` → `"table"."column"` （表名.字段名同样处理）
 - `identifier` → `identifier` （无反引号则保持原样，不加双引号）
 
+### 1.1 字段别名必须加双引号
+
+GaussDB 中字段别名（AS 后的名称）必须使用双引号包裹，否则会被自动转为小写：
+
+```sql
+-- MySQL（别名可以不加引号）
+SELECT user_name AS userName, create_time AS createTime FROM user;
+SELECT COUNT(*) AS totalCount FROM orders;
+SELECT id, name AS displayName FROM product;
+
+-- GaussDB（别名必须加双引号保持大小写）
+SELECT user_name AS "userName", create_time AS "createTime" FROM user;
+SELECT COUNT(*) AS "totalCount" FROM orders;
+SELECT id, name AS "displayName" FROM product;
+```
+
+**转换规则：**
+- `AS aliasName` → `AS "aliasName"` （别名加双引号）
+- `AS alias_name` → `AS "alias_name"` （下划线别名也加双引号）
+- `column aliasName`（无 AS）→ `column "aliasName"` （隐式别名也需要加双引号）
+
+**注意事项：**
+- 别名中的大小写会被保留（如 `"userName"` 保持驼峰命名）
+- 如果别名全小写且不含特殊字符，可以不加引号，但建议统一加上以避免问题
+- 表别名（如 `FROM user u`）通常不需要加引号，保持原样即可
+
 ## 2. 字符串值引号转换
 
 GaussDB 中双引号用于标识符，字符串必须用单引号：
@@ -323,6 +349,10 @@ grep -rn "\`" --include="*.xml" --include="*.java"
 # 检查双引号字符串值（GaussDB 双引号仅用于标识符，字符串应用单引号）
 grep -rnE "=\s*\"[^\"]+\"" --include="*.xml" --include="*.java"
 
+# 检查字段别名是否加了双引号（需人工确认）
+# AS 后面的别名如果没有双引号，可能导致大小写问题
+grep -rnE "\bAS\s+[a-zA-Z_][a-zA-Z0-9_]*\s*[,\s\n\r\)]" --include="*.xml" --include="*.java"
+
 # ========== 2. 通用函数检查 ==========
 # 检查 IFNULL（应转为 COALESCE）
 grep -rn "IFNULL" --include="*.xml" --include="*.java"
@@ -455,6 +485,7 @@ grep -rnE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
 
 | 检查项 | 命令 | 检查要点 |
 |--------|------|----------|
+| 字段别名 | `grep -rnE "\bAS\s+[a-zA-Z_][a-zA-Z0-9_]*\s*[,\s)]"` | 确认别名已添加双引号，如 `AS "userName"` |
 | ON DUPLICATE KEY | `grep -rn "ON DUPLICATE KEY"` | 需人工转换为 ON CONFLICT |
 | ORDER BY | `grep -rnE "ORDER\s+BY"` | 确认已添加 NULLS FIRST/LAST |
 | GROUP BY | `grep -rnE "GROUP\s+BY"` | 确认非聚合列已用 MAX() 等函数包装 |
@@ -472,6 +503,7 @@ grep -rnE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
 ✅ 标识符和字符串
    - 反引号已替换为双引号
    - 字符串值已使用单引号
+   - 字段别名已添加双引号
 
 ✅ 通用函数
    - IFNULL 已转为 COALESCE
