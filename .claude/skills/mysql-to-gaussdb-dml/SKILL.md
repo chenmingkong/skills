@@ -97,6 +97,7 @@ INSERT INTO user(name) VALUES('李四');
 | `JSON_CONTAINS(col, json_val)` | `col::jsonb @> json_val::jsonb` | JSON包含检查 |
 | `ANY_VALUE(col)` | `MAX(col)` | 任意值 |
 | `SELECT EXISTS(...)` | `SELECT (EXISTS(...))::int` | EXISTS返回0/1 |
+| `LAST_INSERT_ID()` | `currval('表名_列名_seq')` | 获取最后插入的自增ID |
 
 **示例：**
 
@@ -117,6 +118,30 @@ SELECT * FROM article WHERE dataset::jsonb @> '{"隐私":[]}'::jsonb;
 SELECT json_build_object('scene', 'test', 'count', '1') AS config;  -- 多键值对
 SELECT json_build_object('test', '1') AS data;  -- 单键值对
 ```
+
+### 3.1 LAST_INSERT_ID 转换
+
+MySQL 的 `LAST_INSERT_ID()` 用于获取最后插入的自增 ID，GaussDB 需要使用 `currval('序列名')` 替代：
+
+```sql
+-- MySQL
+INSERT INTO user(name) VALUES('张三');
+SELECT LAST_INSERT_ID();  -- 获取刚插入的 user 表的自增 ID
+
+-- GaussDB
+INSERT INTO user(name) VALUES('张三');
+SELECT currval('user_id_seq');  -- 序列名通常为：表名_列名_seq
+```
+
+**序列命名规则：**
+- 默认序列名格式：`表名_列名_seq`
+- 例如：`user` 表的 `id` 列 → 序列名为 `user_id_seq`
+- 例如：`orders` 表的 `order_id` 列 → 序列名为 `orders_order_id_seq`
+
+**注意事项：**
+- 必须在同一会话中先执行 INSERT，再调用 `currval()`
+- 序列名需要根据实际的表结构确定，可通过 `\d 表名` 查看
+- 如果使用了自定义序列名，需要使用实际的序列名称
 
 ## 4. 日期时间函数转换（重要）
 
@@ -372,6 +397,9 @@ grep -rn "JSON_CONTAINS" --include="*.xml" --include="*.java"
 # 检查 ANY_VALUE（应转为 MAX）
 grep -rn "ANY_VALUE" --include="*.xml" --include="*.java"
 
+# 检查 LAST_INSERT_ID（应转为 currval('序列名')）
+grep -rn "LAST_INSERT_ID" --include="*.xml" --include="*.java"
+
 # ========== 3. 日期函数检查（重点） ==========
 # 检查 DATE_FORMAT（应转为 TO_CHAR）
 grep -rn "DATE_FORMAT" --include="*.xml" --include="*.java"
@@ -459,6 +487,7 @@ grep -rnE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
 | JSON_OBJECT | `grep -rn "JSON_OBJECT"` | 无匹配 |
 | JSON_CONTAINS | `grep -rn "JSON_CONTAINS"` | 无匹配 |
 | ANY_VALUE | `grep -rn "ANY_VALUE"` | 无匹配 |
+| LAST_INSERT_ID | `grep -rn "LAST_INSERT_ID"` | 无匹配 |
 
 **日期时间函数：**
 
