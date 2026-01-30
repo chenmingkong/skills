@@ -188,6 +188,83 @@ SELECT currval('sys_user_id_seq');  -- 真实序列名，非猜测
 - 必须在同一会话中先执行 INSERT，再调用 `currval()`
 - 可通过数据库命令 `\ds` 或 `SELECT * FROM pg_sequences` 查看所有序列
 
+### 3.2 ON DUPLICATE KEY UPDATE 转换
+
+MySQL 的 `ON DUPLICATE KEY UPDATE` 语法在 GaussDB 中可以使用，但 **UPDATE 子句中不能包含唯一索引字段**。
+
+**重要：必须先扫描 DDL/SQL 文件获取表的唯一索引字段！**
+
+#### 步骤 1：扫描项目中的 SQL 文件，查找唯一索引定义
+
+```bash
+# 查找唯一索引定义
+grep -rn "UNIQUE" --include="*.sql"
+
+# 查找主键定义
+grep -rn "PRIMARY KEY" --include="*.sql"
+```
+
+#### 步骤 2：建立表的唯一索引映射关系
+
+扫描 DDL 文件，找到类似以下的定义：
+
+```sql
+-- DDL 文件中的唯一索引定义示例
+CREATE TABLE user (
+    id BIGINT PRIMARY KEY,                    -- 主键（唯一）
+    username NVARCHAR2(50) UNIQUE,            -- 唯一索引字段
+    email NVARCHAR2(100),
+    phone NVARCHAR2(20),
+    status INT
+);
+
+CREATE UNIQUE INDEX uk_user_email ON user(email);  -- 唯一索引字段
+CREATE UNIQUE INDEX uk_user_phone ON user(phone);  -- 唯一索引字段
+```
+
+#### 步骤 3：转换 ON DUPLICATE KEY UPDATE 语句
+
+```sql
+-- MySQL 原始语句
+INSERT INTO user(id, username, email, phone, status)
+VALUES(1, 'admin', 'admin@test.com', '13800138000', 1)
+ON DUPLICATE KEY UPDATE
+    username = VALUES(username),  -- ❌ username 是唯一索引，不能更新
+    email = VALUES(email),        -- ❌ email 是唯一索引，不能更新
+    phone = VALUES(phone),        -- ❌ phone 是唯一索引，不能更新
+    status = VALUES(status);      -- ✅ status 不是唯一索引，可以更新
+
+-- GaussDB 转换后（移除唯一索引字段的更新）
+INSERT INTO user(id, username, email, phone, status)
+VALUES(1, 'admin', 'admin@test.com', '13800138000', 1)
+ON DUPLICATE KEY UPDATE
+    status = VALUES(status);      -- ✅ 只更新非唯一索引字段
+```
+
+#### 唯一索引映射表（转换前先填写）
+
+| 表名 | 唯一索引字段 | 索引类型 | 来源文件 |
+|------|-------------|----------|----------|
+| user | id | PRIMARY KEY | schema.sql:10 |
+| user | username | UNIQUE | schema.sql:11 |
+| user | email | UNIQUE INDEX | schema.sql:20 |
+| user | phone | UNIQUE INDEX | schema.sql:21 |
+| orders | order_no | UNIQUE | orders.sql:8 |
+
+#### 转换规则
+
+| 字段类型 | ON DUPLICATE KEY UPDATE 中 |
+|---------|---------------------------|
+| PRIMARY KEY | ❌ 不能包含 |
+| UNIQUE 约束字段 | ❌ 不能包含 |
+| UNIQUE INDEX 字段 | ❌ 不能包含 |
+| 普通字段 | ✅ 可以更新 |
+
+**注意事项：**
+- **必须**先扫描 DDL 文件确定表的所有唯一索引字段
+- UPDATE 子句中只能包含**非唯一索引**的普通字段
+- 如果所有需要更新的字段都是唯一索引，需要改用其他方案（如先 DELETE 再 INSERT）
+
 ## 4. 日期时间函数转换（重要）
 
 ### 4.1 获取当前时间
@@ -504,7 +581,7 @@ grep -rnE "INSERT\s+INTO" --include="*.xml" --include="*.java"
 grep -rnE "UPDATE\s+\w+\s+SET" --include="*.xml" --include="*.java"
 
 # ========== 7. 需人工处理的语法 ==========
-# 检查 ON DUPLICATE KEY UPDATE（需人工转换为 ON CONFLICT）
+# 检查 ON DUPLICATE KEY UPDATE（UPDATE 子句中不能包含唯一索引字段）
 grep -rn "ON DUPLICATE KEY" --include="*.xml" --include="*.java"
 
 # 检查 SELECT EXISTS（如需返回 0/1 需转为 (EXISTS(...))::int）
@@ -560,7 +637,7 @@ grep -rnE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
 | 检查项 | 命令 | 检查要点 |
 |--------|------|----------|
 | 字段别名 | `grep -rnE "\bAS\s+[a-zA-Z_][a-zA-Z0-9_]*\s*[,\s)]"` | 确认别名已添加双引号，如 `AS "userName"` |
-| ON DUPLICATE KEY | `grep -rn "ON DUPLICATE KEY"` | 需人工转换为 ON CONFLICT |
+| ON DUPLICATE KEY | `grep -rn "ON DUPLICATE KEY"` | UPDATE 子句中不能包含唯一索引字段，需扫描 DDL 确认 |
 | ORDER BY | `grep -rnE "ORDER\s+BY"` | 确认已添加 NULLS FIRST/LAST |
 | GROUP BY | `grep -rnE "GROUP\s+BY"` | 确认非聚合列已用 MAX() 等函数包装 |
 | SELECT EXISTS | `grep -rnE "SELECT\s+EXISTS"` | 如需返回 0/1 需转为 `(EXISTS(...))::int` |
