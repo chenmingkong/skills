@@ -316,144 +316,151 @@ UPDATE config SET settings = #{settings}::json, metadata = #{metadata}::json WHE
 ### 10.1 扫描残留 MySQL 语法
 
 ```bash
-# ========== 标识符和字符串检查 ==========
-# 检查反引号（MySQL 特有）
-grep -r "\`" --include="*.xml" --include="*.java"
+# ========== 1. 标识符和字符串检查 ==========
+# 检查反引号（MySQL 特有，应转为双引号）
+grep -rn "\`" --include="*.xml" --include="*.java"
 
-# 检查双引号字符串值（GaussDB 双引号仅用于标识符）
-grep -rE "=\s*\"[^\"]+\"" --include="*.xml" --include="*.java"
+# 检查双引号字符串值（GaussDB 双引号仅用于标识符，字符串应用单引号）
+grep -rnE "=\s*\"[^\"]+\"" --include="*.xml" --include="*.java"
 
-# ========== 通用函数检查 ==========
-# 检查 IFNULL（应为 COALESCE）
-grep -r "IFNULL" --include="*.xml" --include="*.java"
+# ========== 2. 通用函数检查 ==========
+# 检查 IFNULL（应转为 COALESCE）
+grep -rn "IFNULL" --include="*.xml" --include="*.java"
 
-# 检查 IF(（应为 CASE WHEN）
-grep -rE "\bIF\s*\(" --include="*.xml" --include="*.java"
+# 检查 IF(（应转为 CASE WHEN）
+grep -rnE "\bIF\s*\(" --include="*.xml" --include="*.java"
 
-# 检查 GROUP_CONCAT（应为 STRING_AGG）
-grep -r "GROUP_CONCAT" --include="*.xml" --include="*.java"
+# 检查 GROUP_CONCAT（应转为 STRING_AGG）
+grep -rn "GROUP_CONCAT" --include="*.xml" --include="*.java"
 
-# 检查 JSON_OBJECT（应为 json_build_object）
-grep -r "JSON_OBJECT" --include="*.xml" --include="*.java"
+# 检查 JSON_OBJECT（应转为 json_build_object）
+grep -rn "JSON_OBJECT" --include="*.xml" --include="*.java"
 
-# 检查 JSON_CONTAINS（应为 ::jsonb @> ::jsonb）
-grep -r "JSON_CONTAINS" --include="*.xml" --include="*.java"
+# 检查 JSON_CONTAINS（应转为 ::jsonb @> ::jsonb）
+grep -rn "JSON_CONTAINS" --include="*.xml" --include="*.java"
 
-# 检查 ANY_VALUE（应为 MAX）
-grep -r "ANY_VALUE" --include="*.xml" --include="*.java"
+# 检查 ANY_VALUE（应转为 MAX）
+grep -rn "ANY_VALUE" --include="*.xml" --include="*.java"
 
-# ========== 日期函数检查（重点） ==========
-# 检查 DATE_FORMAT（应为 TO_CHAR）
-grep -r "DATE_FORMAT" --include="*.xml" --include="*.java"
+# ========== 3. 日期函数检查（重点） ==========
+# 检查 DATE_FORMAT（应转为 TO_CHAR）
+grep -rn "DATE_FORMAT" --include="*.xml" --include="*.java"
 
-# 检查 STR_TO_DATE（应为 TO_DATE/TO_TIMESTAMP）
-grep -r "STR_TO_DATE" --include="*.xml" --include="*.java"
+# 检查 STR_TO_DATE（应转为 TO_DATE/TO_TIMESTAMP）
+grep -rn "STR_TO_DATE" --include="*.xml" --include="*.java"
 
-# 检查 UNIX_TIMESTAMP
-grep -r "UNIX_TIMESTAMP" --include="*.xml" --include="*.java"
+# 检查 UNIX_TIMESTAMP（应转为 EXTRACT(EPOCH FROM ...)）
+grep -rn "UNIX_TIMESTAMP" --include="*.xml" --include="*.java"
 
-# 检查 FROM_UNIXTIME（应为 TO_TIMESTAMP）
-grep -r "FROM_UNIXTIME" --include="*.xml" --include="*.java"
+# 检查 FROM_UNIXTIME（应转为 TO_TIMESTAMP）
+grep -rn "FROM_UNIXTIME" --include="*.xml" --include="*.java"
 
-# 检查 CURDATE（应为 CURRENT_DATE）
-grep -r "CURDATE" --include="*.xml" --include="*.java"
+# 检查 CURDATE（应转为 CURRENT_DATE）
+grep -rn "CURDATE" --include="*.xml" --include="*.java"
 
-# 检查 CURTIME（应为 CURRENT_TIME）
-grep -r "CURTIME" --include="*.xml" --include="*.java"
+# 检查 CURTIME（应转为 CURRENT_TIME）
+grep -rn "CURTIME" --include="*.xml" --include="*.java"
 
-# 检查 SYSDATE（应为 NOW）
-grep -r "SYSDATE" --include="*.xml" --include="*.java"
+# 检查 SYSDATE（应转为 NOW()）
+grep -rn "SYSDATE" --include="*.xml" --include="*.java"
 
-# 检查 DATE_ADD/DATE_SUB
-grep -rE "DATE_ADD|DATE_SUB" --include="*.xml" --include="*.java"
+# 检查 DATE_ADD/DATE_SUB（应转为 INTERVAL 运算）
+grep -rnE "DATE_ADD|DATE_SUB" --include="*.xml" --include="*.java"
 
-# 检查 DATEDIFF
-grep -r "DATEDIFF" --include="*.xml" --include="*.java"
+# 检查 DATEDIFF（应转为 date1::date - date2::date）
+grep -rn "DATEDIFF" --include="*.xml" --include="*.java"
 
-# 检查 TIMESTAMPDIFF
-grep -r "TIMESTAMPDIFF" --include="*.xml" --include="*.java"
+# 检查 TIMESTAMPDIFF（应转为 EXTRACT）
+grep -rn "TIMESTAMPDIFF" --include="*.xml" --include="*.java"
 
-# 检查 DATE（应为 TO_CHAR）
-grep -rE "\bDATE\s*\(" --include="*.xml" --include="*.java"
+# 检查 DATE(（应转为 TO_CHAR(..., 'YYYY-MM-DD')）
+grep -rnE "\bDATE\s*\(" --include="*.xml" --include="*.java"
 
-# 检查日期提取函数 YEAR/MONTH/DAY/HOUR/MINUTE/SECOND
-grep -rE "\b(YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)\s*\(" --include="*.xml" --include="*.java"
+# 检查 TIME(（应转为 ::time）
+grep -rnE "\bTIME\s*\(" --include="*.xml" --include="*.java"
 
-# 检查 DAYOFWEEK/DAYOFMONTH/DAYOFYEAR
-grep -rE "\bDAYOF(WEEK|MONTH|YEAR)\s*\(" --include="*.xml" --include="*.java"
+# 检查日期提取函数 YEAR/MONTH/DAY/HOUR/MINUTE/SECOND（应转为 EXTRACT）
+grep -rnE "\b(YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)\s*\(" --include="*.xml" --include="*.java"
 
-# ========== ORDER BY 检查 ==========
-# 检查 ORDER BY 是否添加了 NULLS FIRST/LAST
-grep -rE "ORDER\s+BY" --include="*.xml" --include="*.java"
+# 检查 DAYOFWEEK/DAYOFMONTH/DAYOFYEAR（应转为 EXTRACT(DOW/DAY/DOY FROM ...)）
+grep -rnE "\bDAYOF(WEEK|MONTH|YEAR)\s*\(" --include="*.xml" --include="*.java"
 
-# ========== INSERT/UPDATE 类型转换检查 ==========
-# 检查 INSERT/UPDATE 语句中 INT 字段是否需要 ::int 转换（需人工确认）
-grep -rE "INSERT\s+INTO|UPDATE\s+\w+\s+SET" --include="*.xml" --include="*.java"
+# ========== 4. ORDER BY 检查 ==========
+# 检查 ORDER BY 是否添加了 NULLS FIRST/LAST（需人工确认）
+grep -rnE "ORDER\s+BY" --include="*.xml" --include="*.java"
 
-# 检查 JSON 字段是否需要 ::json 转换（需人工确认）
-# 注：需结合数据库表结构确认哪些字段是 JSON 类型
+# ========== 5. GROUP BY 检查 ==========
+# 检查 GROUP BY 语句，确认非聚合列已用聚合函数包装（需人工确认）
+grep -rnE "GROUP\s+BY" --include="*.xml" --include="*.java"
 
-# ========== 需人工检查 ==========
+# ========== 6. INSERT/UPDATE 类型转换检查 ==========
+# 检查 INSERT 语句（需人工确认 INT/JSON 字段是否需要类型转换）
+grep -rnE "INSERT\s+INTO" --include="*.xml" --include="*.java"
+
+# 检查 UPDATE 语句（需人工确认 INT/JSON 字段是否需要类型转换）
+grep -rnE "UPDATE\s+\w+\s+SET" --include="*.xml" --include="*.java"
+
+# ========== 7. 需人工处理的语法 ==========
 # 检查 ON DUPLICATE KEY UPDATE（需人工转换为 ON CONFLICT）
-grep -r "ON DUPLICATE KEY" --include="*.xml" --include="*.java"
+grep -rn "ON DUPLICATE KEY" --include="*.xml" --include="*.java"
 
-# 检查 GROUP BY 语句（确认非聚合列已处理）
-grep -rE "GROUP\s+BY" --include="*.xml" --include="*.java"
-
-# 检查 SELECT EXISTS（如需返回 0/1 需转换）
-grep -rE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
+# 检查 SELECT EXISTS（如需返回 0/1 需转为 (EXISTS(...))::int）
+grep -rnE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
 ```
 
 ### 10.2 校验清单
+
+#### 必须转换项（期望：无匹配）
 
 **标识符和字符串：**
 
 | 检查项 | 命令 | 期望结果 |
 |--------|------|----------|
-| 反引号 | `grep -r "\`"` | 无匹配 |
-| 双引号字符串 | `grep -rE "=\s*\"[^\"]+\""` | 无匹配 |
+| 反引号 | `grep -rn "\`"` | 无匹配 |
+| 双引号字符串 | `grep -rnE "=\s*\"[^\"]+\""` | 无匹配 |
 
 **通用函数：**
 
 | 检查项 | 命令 | 期望结果 |
 |--------|------|----------|
-| IFNULL | `grep -r "IFNULL"` | 无匹配 |
-| IF( | `grep -rE "\bIF\s*\("` | 无匹配 |
-| GROUP_CONCAT | `grep -r "GROUP_CONCAT"` | 无匹配 |
-| JSON_OBJECT | `grep -r "JSON_OBJECT"` | 无匹配 |
-| JSON_CONTAINS | `grep -r "JSON_CONTAINS"` | 无匹配 |
-| ANY_VALUE | `grep -r "ANY_VALUE"` | 无匹配 |
+| IFNULL | `grep -rn "IFNULL"` | 无匹配 |
+| IF( | `grep -rnE "\bIF\s*\("` | 无匹配 |
+| GROUP_CONCAT | `grep -rn "GROUP_CONCAT"` | 无匹配 |
+| JSON_OBJECT | `grep -rn "JSON_OBJECT"` | 无匹配 |
+| JSON_CONTAINS | `grep -rn "JSON_CONTAINS"` | 无匹配 |
+| ANY_VALUE | `grep -rn "ANY_VALUE"` | 无匹配 |
 
 **日期时间函数：**
 
 | 检查项 | 命令 | 期望结果 |
 |--------|------|----------|
-| DATE_FORMAT | `grep -r "DATE_FORMAT"` | 无匹配 |
-| STR_TO_DATE | `grep -r "STR_TO_DATE"` | 无匹配 |
-| UNIX_TIMESTAMP | `grep -r "UNIX_TIMESTAMP"` | 无匹配 |
-| FROM_UNIXTIME | `grep -r "FROM_UNIXTIME"` | 无匹配 |
-| CURDATE | `grep -r "CURDATE"` | 无匹配 |
-| CURTIME | `grep -r "CURTIME"` | 无匹配 |
-| SYSDATE | `grep -r "SYSDATE"` | 无匹配 |
-| DATE_ADD | `grep -r "DATE_ADD"` | 无匹配 |
-| DATE_SUB | `grep -r "DATE_SUB"` | 无匹配 |
-| DATEDIFF | `grep -r "DATEDIFF"` | 无匹配 |
-| TIMESTAMPDIFF | `grep -r "TIMESTAMPDIFF"` | 无匹配 |
-| DATE | `grep -rE "\bDATE\s*\("` | 无匹配 |
-| YEAR/MONTH/DAY | `grep -rE "\b(YEAR\|MONTH\|DAY)\s*\("` | 无匹配 |
-| HOUR/MINUTE/SECOND | `grep -rE "\b(HOUR\|MINUTE\|SECOND)\s*\("` | 无匹配 |
-| DAYOFWEEK/DAYOFMONTH/DAYOFYEAR | `grep -rE "\bDAYOF(WEEK\|MONTH\|YEAR)\s*\("` | 无匹配 |
+| DATE_FORMAT | `grep -rn "DATE_FORMAT"` | 无匹配 |
+| STR_TO_DATE | `grep -rn "STR_TO_DATE"` | 无匹配 |
+| UNIX_TIMESTAMP | `grep -rn "UNIX_TIMESTAMP"` | 无匹配 |
+| FROM_UNIXTIME | `grep -rn "FROM_UNIXTIME"` | 无匹配 |
+| CURDATE | `grep -rn "CURDATE"` | 无匹配 |
+| CURTIME | `grep -rn "CURTIME"` | 无匹配 |
+| SYSDATE | `grep -rn "SYSDATE"` | 无匹配 |
+| DATE_ADD | `grep -rn "DATE_ADD"` | 无匹配 |
+| DATE_SUB | `grep -rn "DATE_SUB"` | 无匹配 |
+| DATEDIFF | `grep -rn "DATEDIFF"` | 无匹配 |
+| TIMESTAMPDIFF | `grep -rn "TIMESTAMPDIFF"` | 无匹配 |
+| DATE( | `grep -rnE "\bDATE\s*\("` | 无匹配 |
+| TIME( | `grep -rnE "\bTIME\s*\("` | 无匹配 |
+| YEAR/MONTH/DAY | `grep -rnE "\b(YEAR\|MONTH\|DAY)\s*\("` | 无匹配 |
+| HOUR/MINUTE/SECOND | `grep -rnE "\b(HOUR\|MINUTE\|SECOND)\s*\("` | 无匹配 |
+| DAYOFWEEK/MONTH/YEAR | `grep -rnE "\bDAYOF(WEEK\|MONTH\|YEAR)\s*\("` | 无匹配 |
 
-**需人工检查：**
+#### 需人工检查项
 
-| 检查项 | 命令 | 期望结果 |
+| 检查项 | 命令 | 检查要点 |
 |--------|------|----------|
-| ON DUPLICATE KEY | `grep -r "ON DUPLICATE KEY"` | 需人工转换为 ON CONFLICT |
-| ORDER BY | `grep -rE "ORDER\s+BY"` | 需人工检查 NULLS FIRST/LAST |
-| GROUP BY | `grep -rE "GROUP\s+BY"` | 需人工检查非聚合列 |
-| SELECT EXISTS | `grep -rE "SELECT\s+EXISTS"` | 需人工检查返回值 |
-| INT 字段类型转换 | `grep -rE "INSERT\s+INTO\|UPDATE\s+\w+\s+SET"` | 需人工检查 INT 字段是否需要 `::int` 转换 |
-| JSON 字段类型转换 | `grep -rE "INSERT\s+INTO\|UPDATE\s+\w+\s+SET"` | 需人工检查 JSON 字段是否需要 `::json` 转换 |
+| ON DUPLICATE KEY | `grep -rn "ON DUPLICATE KEY"` | 需人工转换为 ON CONFLICT |
+| ORDER BY | `grep -rnE "ORDER\s+BY"` | 确认已添加 NULLS FIRST/LAST |
+| GROUP BY | `grep -rnE "GROUP\s+BY"` | 确认非聚合列已用 MAX() 等函数包装 |
+| SELECT EXISTS | `grep -rnE "SELECT\s+EXISTS"` | 如需返回 0/1 需转为 `(EXISTS(...))::int` |
+| INSERT 语句 | `grep -rnE "INSERT\s+INTO"` | 确认 INT 字段已添加 `::int`，JSON 字段已添加 `::json` |
+| UPDATE 语句 | `grep -rnE "UPDATE\s+\w+\s+SET"` | 确认 INT 字段已添加 `::int`，JSON 字段已添加 `::json` |
 
 ### 10.3 生成校验报告
 
@@ -471,31 +478,45 @@ grep -rE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
    - IF() 已转为 CASE WHEN
    - GROUP_CONCAT 已转为 STRING_AGG
    - JSON_OBJECT 已转为 json_build_object
+   - JSON_CONTAINS 已转为 ::jsonb @> ::jsonb
+   - ANY_VALUE 已转为 MAX
 
 ✅ 日期时间函数
    - DATE_FORMAT 已转为 TO_CHAR
    - STR_TO_DATE 已转为 TO_DATE/TO_TIMESTAMP
+   - UNIX_TIMESTAMP 已转为 EXTRACT(EPOCH FROM ...)
+   - FROM_UNIXTIME 已转为 TO_TIMESTAMP
    - CURDATE 已转为 CURRENT_DATE
+   - CURTIME 已转为 CURRENT_TIME
+   - SYSDATE 已转为 NOW()
    - DATE_ADD/DATE_SUB 已转为 INTERVAL 运算
+   - DATEDIFF 已转为 date1::date - date2::date
    - TIMESTAMPDIFF 已转为 EXTRACT
-   - YEAR/MONTH/DAY 已转为 EXTRACT
+   - DATE() 已转为 TO_CHAR(..., 'YYYY-MM-DD')
+   - TIME() 已转为 ::time
+   - YEAR/MONTH/DAY/HOUR/MINUTE/SECOND 已转为 EXTRACT
+
+✅ 类型转换
+   - INSERT/UPDATE 中 INT 字段已添加 ::int
+   - INSERT/UPDATE 中 JSON 字段已添加 ::json
 
 ⚠️ 待人工检查项（如有）
+   - ORDER BY 语句：确认已添加 NULLS FIRST/LAST
    - GROUP BY 语句：确认非聚合列已用 MAX() 包装
    - SELECT EXISTS：如需返回 0/1 需转为 (EXISTS(...))::int
    - INSERT/UPDATE 语句：确认 INT 字段传入字符串时已添加 ::int
    - INSERT/UPDATE 语句：确认 JSON 字段传入字符串时已添加 ::json
-   - UserMapper.xml:45 - 发现反引号
-   - OrderMapper.xml:78 - 发现 DATE_FORMAT
+   - UserMapper.xml:45 - 发现 xxx（示例）
 
 ❌ 未通过项（如有）
-   - 仍存在 IFNULL 函数
-   - 仍存在 DATE_FORMAT 函数
+   - OrderMapper.xml:78 - 仍存在 DATE_FORMAT
+   - ConfigMapper.xml:23 - 仍存在 IFNULL
 
 ============ 统计 ============
-扫描文件: XX 个
-已转换: XX 处
-待处理: XX 处
+扫描文件数: XX 个
+已转换项: XX 处
+待人工检查: XX 处
+未通过项: XX 处
 ```
 
 ## 11. 完整转换示例
