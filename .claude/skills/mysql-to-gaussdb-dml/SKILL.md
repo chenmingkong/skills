@@ -20,33 +20,32 @@ argument-hint: "[Mapper文件或目录]"
 
 ## 1. 标识符引号转换（表名、字段名）
 
-MySQL 使用反引号 `` ` `` 包裹表名和字段名，GaussDB 使用双引号 `"`：
+MySQL 使用反引号 `` ` `` 包裹表名和字段名，GaussDB 中**表名和字段名不需要加双引号**，直接去掉反引号即可：
 
 ```sql
 -- MySQL 写法（有反引号）
 SELECT `id`, `user_name` FROM `user` WHERE `status` = 1;
 SELECT `User`.`Name` FROM `User`;
 
--- GaussDB 写法（反引号替换为双引号，标识符转小写）
-SELECT "id", "user_name" FROM "user" WHERE "status" = 1;
-SELECT "user"."name" FROM "user";
+-- GaussDB 写法（直接去掉反引号，不加双引号）
+SELECT id, user_name FROM user WHERE status = 1;
+SELECT User.Name FROM User;
 
 -- MySQL 写法（无反引号）
 SELECT id, user_name FROM user WHERE status = 1;
 
--- GaussDB 写法（保持原样，不加双引号）
+-- GaussDB 写法（保持原样）
 SELECT id, user_name FROM user WHERE status = 1;
 ```
 
 **转换规则：**
-- `` `identifier` `` → `"identifier"` （反引号替换为双引号）
-- `` `TableName` `` → `"tablename"` （大写必须转为小写）
-- `` `table`.`column` `` → `"table"."column"` （表名.字段名同样处理）
-- `identifier` → `identifier` （无反引号则保持原样，不加双引号）
+- `` `identifier` `` → `identifier` （去掉反引号，不加双引号）
+- `` `table`.`column` `` → `table.column` （去掉反引号）
+- `identifier` → `identifier` （无反引号则保持原样）
 
 ### 1.1 字段别名必须加双引号
 
-GaussDB 中字段别名（AS 后的名称）必须使用双引号包裹，否则会被自动转为小写：
+**只有字段别名需要加双引号**，用于保持别名的大小写：
 
 ```sql
 -- MySQL（别名可以不加引号）
@@ -54,7 +53,7 @@ SELECT user_name AS userName, create_time AS createTime FROM user;
 SELECT COUNT(*) AS totalCount FROM orders;
 SELECT id, name AS displayName FROM product;
 
--- GaussDB（别名必须加双引号保持大小写）
+-- GaussDB（只给别名加双引号，字段名不加）
 SELECT user_name AS "userName", create_time AS "createTime" FROM user;
 SELECT COUNT(*) AS "totalCount" FROM orders;
 SELECT id, name AS "displayName" FROM product;
@@ -66,9 +65,9 @@ SELECT id, name AS "displayName" FROM product;
 - `column aliasName`（无 AS）→ `column "aliasName"` （隐式别名也需要加双引号）
 
 **注意事项：**
+- **表名、字段名不加双引号**，只有别名需要加
 - 别名中的大小写会被保留（如 `"userName"` 保持驼峰命名）
-- 如果别名全小写且不含特殊字符，可以不加引号，但建议统一加上以避免问题
-- 表别名（如 `FROM user u`）通常不需要加引号，保持原样即可
+- 表别名（如 `FROM user u`）不需要加引号，保持原样即可
 
 ## 2. 字符串值引号转换
 
@@ -652,9 +651,9 @@ grep -rnE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
 ============ DML 迁移校验报告 ============
 
 ✅ 标识符和字符串
-   - 反引号已替换为双引号
+   - 反引号已去掉（表名、字段名不加双引号）
    - 字符串值已使用单引号
-   - 字段别名已添加双引号
+   - 字段别名已添加双引号（只有别名需要双引号）
 
 ✅ 通用函数
    - IFNULL 已转为 COALESCE
