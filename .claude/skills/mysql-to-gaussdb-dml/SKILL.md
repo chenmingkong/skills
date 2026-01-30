@@ -465,7 +465,7 @@ CREATE TABLE config (
 
 ### 步骤 4：转换 INSERT/UPDATE 语句
 
-根据字段类型映射表，为传入字符串的 INT/JSON 字段添加类型转换：
+根据字段类型映射表，**只对 INSERT 的 VALUES 和 UPDATE 的 SET 中的输入值**添加类型转换：
 
 ```sql
 -- MySQL 原始语句
@@ -481,7 +481,7 @@ UPDATE user SET
     metadata = #{metadata}
 WHERE id = #{id};
 
--- GaussDB 转换后（根据字段类型添加转换）
+-- GaussDB 转换后（只转换 INSERT VALUES 和 UPDATE SET 中的值）
 INSERT INTO user(id, age, score, level, name, settings, metadata)
 VALUES(#{id}::int, #{age}::int, #{score}::int, #{level}::int2, #{name}, #{settings}::json, #{metadata}::json);
 
@@ -492,7 +492,7 @@ UPDATE user SET
     name = #{name},                -- 字符串类型不需要转换
     settings = #{settings}::json,
     metadata = #{metadata}::json
-WHERE id = #{id}::int;
+WHERE id = #{id};                  -- WHERE 子句不需要类型转换
 ```
 
 ### 7.1 转换规则总结
@@ -509,9 +509,10 @@ WHERE id = #{id}::int;
 ### 7.2 注意事项
 
 - **必须**先扫描 DDL 文件确定表的字段类型，不要猜测
+- **只转换 INSERT VALUES 和 UPDATE SET 中的输入值**
+- **WHERE 子句中的字段不需要类型转换**
 - 只有当 Java/MyBatis 传入的参数是 `String` 类型时才需要转换
 - 如果 Java 参数类型已经是 `Integer`、`Long` 等数值类型，通常不需要转换
-- WHERE 子句中的 INT 字段比较也需要添加 `::int` 转换
 - 可通过数据库命令 `\d 表名` 查看表结构确认字段类型
 
 ## 8. 兼容的 MySQL 语法（无需转换）
@@ -837,6 +838,6 @@ CREATE TABLE config (
         name = #{name},                -- 字符串类型不需要转换
         settings = #{settings}::json,
         metadata = #{metadata}::json
-    WHERE user_id = #{userId}::int     -- WHERE 中的 INT 字段也需要转换
+    WHERE user_id = #{userId}          -- WHERE 子句不需要类型转换
 </update>
 ```
