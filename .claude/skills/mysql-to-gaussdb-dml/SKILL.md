@@ -71,17 +71,40 @@ SELECT id, name AS "displayName" FROM product;
 
 ## 2. 字符串值引号转换
 
-GaussDB 中双引号用于标识符，字符串必须用单引号：
+GaussDB 中双引号仅用于别名，**字符串值必须用单引号**，特别是 WHERE 子句中的值：
 
 ```sql
 -- MySQL（双引号和单引号都可用于字符串）
 SELECT * FROM user WHERE name = "张三";
+SELECT * FROM user WHERE status = "active" AND type = "admin";
 INSERT INTO user(name) VALUES("李四");
 
--- GaussDB（字符串必须用单引号）
+-- GaussDB（字符串必须用单引号，双引号会被识别为标识符）
 SELECT * FROM user WHERE name = '张三';
+SELECT * FROM user WHERE status = 'active' AND type = 'admin';
 INSERT INTO user(name) VALUES('李四');
 ```
+
+**WHERE 子句中常见的双引号转换：**
+
+```sql
+-- MySQL
+WHERE status = "1"
+WHERE type = "normal"
+WHERE name LIKE "%张%"
+WHERE code IN ("A", "B", "C")
+
+-- GaussDB
+WHERE status = '1'
+WHERE type = 'normal'
+WHERE name LIKE '%张%'
+WHERE code IN ('A', 'B', 'C')
+```
+
+**转换规则：**
+- `"字符串值"` → `'字符串值'` （双引号改为单引号）
+- `LIKE "%xxx%"` → `LIKE '%xxx%'` （LIKE 中的双引号也要改）
+- `IN ("a", "b")` → `IN ('a', 'b')` （IN 列表中的双引号也要改）
 
 ## 3. 通用函数转换
 
