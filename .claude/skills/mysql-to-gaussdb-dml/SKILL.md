@@ -549,14 +549,14 @@ WHERE id = #{id};                  -- WHERE 子句不需要类型转换
 
 ```bash
 # ========== 1. 标识符和字符串检查 ==========
-# 检查反引号（MySQL 特有，应转为双引号）
+# 检查反引号（MySQL 特有，应直接去掉，不加双引号）
 grep -rn "\`" --include="*.xml" --include="*.java"
 
-# 检查双引号字符串值（GaussDB 双引号仅用于标识符，字符串应用单引号）
+# 检查双引号字符串值（GaussDB 双引号仅用于别名，字符串应用单引号）
 grep -rnE "=\s*\"[^\"]+\"" --include="*.xml" --include="*.java"
 
 # 检查字段别名是否加了双引号（需人工确认）
-# AS 后面的别名如果没有双引号，可能导致大小写问题
+# AS 后面的别名必须加双引号以保持大小写
 grep -rnE "\bAS\s+[a-zA-Z_][a-zA-Z0-9_]*\s*[,\s\n\r\)]" --include="*.xml" --include="*.java"
 
 # ========== 2. 通用函数检查 ==========
@@ -578,7 +578,7 @@ grep -rn "JSON_CONTAINS" --include="*.xml" --include="*.java"
 # 检查 ANY_VALUE（应转为 MAX）
 grep -rn "ANY_VALUE" --include="*.xml" --include="*.java"
 
-# 检查 LAST_INSERT_ID（应转为 currval('序列名')）
+# 检查 LAST_INSERT_ID（应转为 currval('序列名')，需扫描 DDL 获取真实序列名）
 grep -rn "LAST_INSERT_ID" --include="*.xml" --include="*.java"
 
 # ========== 3. 日期函数检查（重点） ==========
@@ -633,15 +633,30 @@ grep -rnE "ORDER\s+BY" --include="*.xml" --include="*.java"
 grep -rnE "GROUP\s+BY" --include="*.xml" --include="*.java"
 
 # ========== 6. INSERT/UPDATE 类型转换检查 ==========
-# 检查 INSERT 语句（需人工确认 INT/JSON 字段是否需要类型转换）
+# 需同时扫描 Java 类确认参数类型，只有 Java String 传给 INT/JSON 字段才需要转换
+
+# 扫描 Java 类中的 String 类型字段
+grep -rn "private String" --include="*.java"
+
+# 扫描 DDL 中的 INT 类型字段
+grep -rnE "\b(INT|INTEGER|BIGINT|SMALLINT)\b" --include="*.sql"
+
+# 扫描 DDL 中的 JSON 类型字段
+grep -rn "\bJSON\b" --include="*.sql"
+
+# 检查 INSERT 语句（需人工对照 Java 类型和 DDL 类型）
 grep -rnE "INSERT\s+INTO" --include="*.xml" --include="*.java"
 
-# 检查 UPDATE 语句（需人工确认 INT/JSON 字段是否需要类型转换）
+# 检查 UPDATE 语句（需人工对照 Java 类型和 DDL 类型）
 grep -rnE "UPDATE\s+\w+\s+SET" --include="*.xml" --include="*.java"
 
 # ========== 7. 需人工处理的语法 ==========
-# 检查 ON DUPLICATE KEY UPDATE（UPDATE 子句中不能包含唯一索引字段）
+# 检查 ON DUPLICATE KEY UPDATE（UPDATE 子句中不能包含唯一索引字段，需扫描 DDL 确认）
 grep -rn "ON DUPLICATE KEY" --include="*.xml" --include="*.java"
+
+# 扫描唯一索引定义
+grep -rn "UNIQUE" --include="*.sql"
+grep -rn "PRIMARY KEY" --include="*.sql"
 
 # 检查 SELECT EXISTS（如需返回 0/1 需转为 (EXISTS(...))::int）
 grep -rnE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
@@ -696,12 +711,13 @@ grep -rnE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
 | 检查项 | 命令 | 检查要点 |
 |--------|------|----------|
 | 字段别名 | `grep -rnE "\bAS\s+[a-zA-Z_][a-zA-Z0-9_]*\s*[,\s)]"` | 确认别名已添加双引号，如 `AS "userName"` |
+| LAST_INSERT_ID | `grep -rn "LAST_INSERT_ID"` | 需扫描 DDL 获取真实序列名，转为 `currval('序列名')` |
 | ON DUPLICATE KEY | `grep -rn "ON DUPLICATE KEY"` | UPDATE 子句中不能包含唯一索引字段，需扫描 DDL 确认 |
 | ORDER BY | `grep -rnE "ORDER\s+BY"` | 确认已添加 NULLS FIRST/LAST |
 | GROUP BY | `grep -rnE "GROUP\s+BY"` | 确认非聚合列已用 MAX() 等函数包装 |
 | SELECT EXISTS | `grep -rnE "SELECT\s+EXISTS"` | 如需返回 0/1 需转为 `(EXISTS(...))::int` |
-| INSERT 语句 | `grep -rnE "INSERT\s+INTO"` | 确认 INT 字段已添加 `::int`，JSON 字段已添加 `::json` |
-| UPDATE 语句 | `grep -rnE "UPDATE\s+\w+\s+SET"` | 确认 INT 字段已添加 `::int`，JSON 字段已添加 `::json` |
+| INSERT 语句 | `grep -rnE "INSERT\s+INTO"` | 需对照 Java 类，只有 Java String 传给 INT/JSON 才加 `::int`/`::json` |
+| UPDATE 语句 | `grep -rnE "UPDATE\s+\w+\s+SET"` | 需对照 Java 类，只有 Java String 传给 INT/JSON 才加 `::int`/`::json`（WHERE 不转换） |
 
 ### 10.3 生成校验报告
 
@@ -738,16 +754,24 @@ grep -rnE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
    - TIME() 已转为 ::time
    - YEAR/MONTH/DAY/HOUR/MINUTE/SECOND 已转为 EXTRACT
 
-✅ 类型转换
-   - INSERT/UPDATE 中 INT 字段已添加 ::int
-   - INSERT/UPDATE 中 JSON 字段已添加 ::json
+✅ 类型转换（需对照 Java 类）
+   - Java String → DB INT 字段已添加 ::int
+   - Java String → DB JSON 字段已添加 ::json
+   - Java Integer/Long → DB INT 字段无需转换
+   - WHERE 子句无需类型转换
+
+✅ 特殊语法
+   - LAST_INSERT_ID 已转为 currval('真实序列名')
+   - ON DUPLICATE KEY UPDATE 子句中不包含唯一索引字段
 
 ⚠️ 待人工检查项（如有）
+   - 字段别名：确认已添加双引号 AS "aliasName"
    - ORDER BY 语句：确认已添加 NULLS FIRST/LAST
    - GROUP BY 语句：确认非聚合列已用 MAX() 包装
    - SELECT EXISTS：如需返回 0/1 需转为 (EXISTS(...))::int
-   - INSERT/UPDATE 语句：确认 INT 字段传入字符串时已添加 ::int
-   - INSERT/UPDATE 语句：确认 JSON 字段传入字符串时已添加 ::json
+   - LAST_INSERT_ID：需扫描 DDL 确认真实序列名
+   - ON DUPLICATE KEY：需扫描 DDL 确认唯一索引字段
+   - INSERT/UPDATE：需对照 Java 类确认哪些字段需要 ::int/::json
    - UserMapper.xml:45 - 发现 xxx（示例）
 
 ❌ 未通过项（如有）
