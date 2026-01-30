@@ -121,27 +121,72 @@ SELECT json_build_object('test', '1') AS data;  -- 单键值对
 
 ### 3.1 LAST_INSERT_ID 转换
 
-MySQL 的 `LAST_INSERT_ID()` 用于获取最后插入的自增 ID，GaussDB 需要使用 `currval('序列名')` 替代：
+MySQL 的 `LAST_INSERT_ID()` 用于获取最后插入的自增 ID，GaussDB 需要使用 `currval('序列名')` 替代。
+
+**重要：必须先扫描 DDL/SQL 文件获取真实序列名，不要猜测！**
+
+#### 步骤 1：扫描项目中的 SQL 文件，查找序列定义
+
+```bash
+# 查找所有序列定义
+grep -rn "CREATE SEQUENCE" --include="*.sql"
+
+# 查找序列与表的关联（DEFAULT nextval）
+grep -rn "nextval" --include="*.sql"
+```
+
+#### 步骤 2：建立表与序列的映射关系
+
+扫描 DDL 文件，找到类似以下的定义：
+
+```sql
+-- DDL 文件中的序列定义示例
+CREATE SEQUENCE seq_user_id START WITH 1 INCREMENT BY 1;
+CREATE SEQUENCE sys_user_id_seq START WITH 1 INCREMENT BY 1;
+
+-- 表定义中引用序列
+CREATE TABLE user (
+    id BIGINT DEFAULT nextval('seq_user_id'),  -- 真实序列名：seq_user_id
+    name NVARCHAR2(50)
+);
+
+CREATE TABLE sys_user (
+    id BIGINT DEFAULT nextval('sys_user_id_seq'),  -- 真实序列名：sys_user_id_seq
+    username NVARCHAR2(50)
+);
+```
+
+#### 步骤 3：使用真实序列名进行转换
 
 ```sql
 -- MySQL
 INSERT INTO user(name) VALUES('张三');
-SELECT LAST_INSERT_ID();  -- 获取刚插入的 user 表的自增 ID
+SELECT LAST_INSERT_ID();
 
--- GaussDB
+INSERT INTO sys_user(username) VALUES('admin');
+SELECT LAST_INSERT_ID();
+
+-- GaussDB（使用从 DDL 扫描到的真实序列名）
 INSERT INTO user(name) VALUES('张三');
-SELECT currval('user_id_seq');  -- 序列名通常为：表名_列名_seq
+SELECT currval('seq_user_id');  -- 真实序列名，非猜测
+
+INSERT INTO sys_user(username) VALUES('admin');
+SELECT currval('sys_user_id_seq');  -- 真实序列名，非猜测
 ```
 
-**序列命名规则：**
-- 默认序列名格式：`表名_列名_seq`
-- 例如：`user` 表的 `id` 列 → 序列名为 `user_id_seq`
-- 例如：`orders` 表的 `order_id` 列 → 序列名为 `orders_order_id_seq`
+#### 序列名映射表（转换前先填写）
+
+| 表名 | 自增列 | 真实序列名 | 来源文件 |
+|------|--------|-----------|----------|
+| user | id | seq_user_id | schema.sql:15 |
+| sys_user | id | sys_user_id_seq | schema.sql:28 |
+| orders | order_id | orders_order_id_seq | orders.sql:5 |
 
 **注意事项：**
+- **必须**先扫描 DDL 文件确定真实序列名，不要假设命名规则
+- 序列名可能是自定义的，如 `seq_xxx`、`xxx_sequence` 等
 - 必须在同一会话中先执行 INSERT，再调用 `currval()`
-- 序列名需要根据实际的表结构确定，可通过 `\d 表名` 查看
-- 如果使用了自定义序列名，需要使用实际的序列名称
+- 可通过数据库命令 `\ds` 或 `SELECT * FROM pg_sequences` 查看所有序列
 
 ## 4. 日期时间函数转换（重要）
 
