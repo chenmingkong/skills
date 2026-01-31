@@ -283,14 +283,14 @@ grep -rnE "\b(DATE|TIME|YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)\s*\(" --include="*.xm
 
 扫描文件数：X 个
 扫描文件列表：
-  - src/main/resources/mapper/UserMapper.xml
-  - src/main/resources/mapper/OrderMapper.xml
+  - src/main/resources/mapper/UserMapper.xml（扫描 150 行）
+  - src/main/resources/mapper/OrderMapper.xml（扫描 200 行）
   - ...
 
 修改文件数：Y 个
 修改文件列表：
-  - src/main/resources/mapper/UserMapper.xml（5处修改）
-  - src/main/resources/mapper/OrderMapper.xml（3处修改）
+  - src/main/resources/mapper/UserMapper.xml（修改 5 行）
+  - src/main/resources/mapper/OrderMapper.xml（修改 3 行）
   - ...
 ```
 
