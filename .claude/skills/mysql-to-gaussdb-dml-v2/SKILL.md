@@ -244,79 +244,110 @@ ORDER BY age ASC NULLS FIRST, create_time DESC NULLS LAST
 
 ## 六、校验清单
 
-### 必须转换（期望：grep 无匹配）
+### 6.1 基础语法转换
 
-```bash
-# 1. 标识符 - 反引号
-grep -rn "\`" --include="*.xml" --include="*.java"
+| 检查项 | 检查命令 | 期望结果 |
+|--------|----------|----------|
+| 反引号 | `grep -rn "\`" --include="*.xml"` | 无匹配 |
+| 双引号字符串 | `grep -rnE "=\s*\"[^\"]+\"" --include="*.xml"` | 无匹配 |
+| LIKE 双引号 | `grep -rnE "LIKE\s*\"" --include="*.xml"` | 无匹配 |
+| IN 双引号 | `grep -rnE "IN\s*\([^)]*\"" --include="*.xml"` | 无匹配 |
+| 字段别名 | `grep -rnE "\bAS\s+[a-zA-Z]" --include="*.xml"` | 人工确认加了双引号 |
 
-# 2. 双引号字符串值
-grep -rnE "=\s*\"[^\"]+\"" --include="*.xml" --include="*.java"
-grep -rnE "LIKE\s*\"" --include="*.xml"
-grep -rnE "IN\s*\(.*\"" --include="*.xml"
+### 6.2 通用函数转换
 
-# 3. 通用函数
-grep -rn "IFNULL" --include="*.xml"
-grep -rnE "\bIF\s*\(" --include="*.xml"
-grep -rn "JSON_OBJECT\|JSON_CONTAINS" --include="*.xml"
-grep -rn "ANY_VALUE" --include="*.xml"
+| 检查项 | 检查命令 | 期望结果 |
+|--------|----------|----------|
+| IFNULL | `grep -rn "IFNULL" --include="*.xml"` | 无匹配 |
+| IF() | `grep -rnE "\bIF\s*\(" --include="*.xml"` | 无匹配 |
+| JSON_OBJECT | `grep -rn "JSON_OBJECT" --include="*.xml"` | 无匹配 |
+| JSON_CONTAINS | `grep -rn "JSON_CONTAINS" --include="*.xml"` | 无匹配 |
+| ANY_VALUE | `grep -rn "ANY_VALUE" --include="*.xml"` | 无匹配 |
 
-# 4. 日期时间函数
-grep -rn "DATE_FORMAT\|STR_TO_DATE" --include="*.xml"
-grep -rn "UNIX_TIMESTAMP\|FROM_UNIXTIME" --include="*.xml"
-grep -rn "CURDATE\|CURTIME\|SYSDATE" --include="*.xml"
-grep -rn "DATEDIFF\|TIMESTAMPDIFF\|DATE_ADD\|DATE_SUB" --include="*.xml"
-grep -rnE "\bDATE\s*\(" --include="*.xml"
-grep -rnE "\bTIME\s*\(" --include="*.xml"
-grep -rnE "\b(YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)\s*\(" --include="*.xml"
-```
+### 6.3 日期时间函数转换
 
-### 需人工检查
+| 检查项 | 检查命令 | 期望结果 |
+|--------|----------|----------|
+| DATE_FORMAT | `grep -rn "DATE_FORMAT" --include="*.xml"` | 无匹配 |
+| STR_TO_DATE | `grep -rn "STR_TO_DATE" --include="*.xml"` | 无匹配 |
+| UNIX_TIMESTAMP | `grep -rn "UNIX_TIMESTAMP" --include="*.xml"` | 无匹配 |
+| FROM_UNIXTIME | `grep -rn "FROM_UNIXTIME" --include="*.xml"` | 无匹配 |
+| CURDATE | `grep -rn "CURDATE" --include="*.xml"` | 无匹配 |
+| CURTIME | `grep -rn "CURTIME" --include="*.xml"` | 无匹配 |
+| SYSDATE | `grep -rn "SYSDATE" --include="*.xml"` | 无匹配 |
+| DATEDIFF | `grep -rn "DATEDIFF" --include="*.xml"` | 无匹配 |
+| TIMESTAMPDIFF | `grep -rn "TIMESTAMPDIFF" --include="*.xml"` | 无匹配 |
+| DATE_ADD | `grep -rn "DATE_ADD" --include="*.xml"` | 无匹配 |
+| DATE_SUB | `grep -rn "DATE_SUB" --include="*.xml"` | 无匹配 |
+| DATE() | `grep -rnE "\bDATE\s*\(" --include="*.xml"` | 无匹配 |
+| TIME() | `grep -rnE "\bTIME\s*\(" --include="*.xml"` | 无匹配 |
+| YEAR/MONTH/DAY() | `grep -rnE "\b(YEAR\|MONTH\|DAY)\s*\(" --include="*.xml"` | 无匹配 |
 
-| 检查项 | 命令 | 要点 |
-|--------|------|------|
-| 别名 | `grep -rnE "\bAS\s+[a-zA-Z]" --include="*.xml"` | 确认加了双引号 |
-| LAST_INSERT_ID | `grep -rn "LAST_INSERT_ID"` | 需扫描 DDL 获取序列名 |
-| ON DUPLICATE KEY | `grep -rn "ON DUPLICATE KEY"` | 需扫描 DDL 确认唯一索引，UPDATE 中不能包含唯一索引字段 |
-| ORDER BY | `grep -rnE "ORDER\s+BY"` | 确认加了 NULLS FIRST/LAST |
-| GROUP BY | `grep -rnE "GROUP\s+BY"` | 确认非聚合列已用聚合函数包装 |
-| INSERT/UPDATE 类型 | `grep -rnE "INSERT\|UPDATE"` | 对照 Java 类，String→INT 加 `::int`，String→JSON 加 `::json` |
+### 6.4 特殊场景检查
 
-### 转换报告
+| 检查项 | 检查命令 | 处理要点 |
+|--------|----------|----------|
+| LAST_INSERT_ID | `grep -rn "LAST_INSERT_ID" --include="*.xml"` | 扫描 DDL 获取真实序列名 |
+| ON DUPLICATE KEY | `grep -rn "ON DUPLICATE KEY" --include="*.xml"` | UPDATE 中移除唯一索引字段 |
+| ORDER BY | `grep -rnE "ORDER\s+BY" --include="*.xml"` | 确认加了 NULLS FIRST/LAST |
+| GROUP BY | `grep -rnE "GROUP\s+BY" --include="*.xml"` | 非聚合列用聚合函数包装 |
+| INSERT 类型转换 | `grep -rn "INSERT" --include="*.xml"` | String→INT 加 `::int`，String→JSON 加 `::json` |
+| UPDATE 类型转换 | `grep -rn "UPDATE" --include="*.xml"` | String→INT 加 `::int`，String→JSON 加 `::json` |
 
-转换完成后，必须输出以下统计信息：
+### 6.5 转换报告
+
+转换完成后，必须输出以下报告：
 
 ```
 ================== 转换报告 ==================
 
-【扫描统计】
-扫描文件数：X 个
-总扫描行数：XXX 行
-扫描文件列表：
-  1. src/main/resources/mapper/UserMapper.xml（150 行）
-  2. src/main/resources/mapper/OrderMapper.xml（200 行）
-  3. src/main/java/com/example/UserRepository.java（80 行）
-  ...
-
-【修改统计】
-修改文件数：Y 个
-总修改行数：YY 行
-修改文件列表：
-  1. src/main/resources/mapper/UserMapper.xml（修改 5 行）
-     - 第 23 行：IFNULL → COALESCE
-     - 第 45 行：DATE_FORMAT → TO_CHAR
-     - ...
-  2. src/main/resources/mapper/OrderMapper.xml（修改 3 行）
-     - 第 12 行：去掉反引号
-     - ...
-
-【校验结果】
+【6.1 基础语法转换】
 ✓ 反引号检查通过
 ✓ 双引号字符串检查通过
-✓ IFNULL 函数检查通过
-✗ 发现 2 处需人工确认：
-  - UserMapper.xml:67 - AS userName 需确认是否加双引号
-  - OrderMapper.xml:89 - ORDER BY 需确认 NULLS 排序
+✓ LIKE 双引号检查通过
+✓ IN 双引号检查通过
+△ 字段别名：发现 3 处，已确认加双引号
+
+【6.2 通用函数转换】
+✓ IFNULL 检查通过（转换 5 处）
+✓ IF() 检查通过（转换 2 处）
+✓ JSON_OBJECT 检查通过
+✓ JSON_CONTAINS 检查通过
+✓ ANY_VALUE 检查通过
+
+【6.3 日期时间函数转换】
+✓ DATE_FORMAT 检查通过（转换 8 处）
+✓ STR_TO_DATE 检查通过
+✓ UNIX_TIMESTAMP 检查通过
+✓ FROM_UNIXTIME 检查通过
+✓ CURDATE 检查通过（转换 1 处）
+✓ CURTIME 检查通过
+✓ SYSDATE 检查通过
+✓ DATEDIFF 检查通过
+✓ TIMESTAMPDIFF 检查通过
+✓ DATE_ADD 检查通过
+✓ DATE_SUB 检查通过
+✓ DATE() 检查通过（转换 3 处）
+✓ TIME() 检查通过
+✓ YEAR/MONTH/DAY() 检查通过
+
+【6.4 特殊场景检查】
+△ LAST_INSERT_ID：发现 1 处，已替换为 currval('user_id_seq')
+△ ON DUPLICATE KEY：发现 2 处，已移除唯一索引字段
+△ ORDER BY：发现 5 处，已添加 NULLS FIRST/LAST
+△ GROUP BY：发现 3 处，已用聚合函数包装
+△ INSERT 类型转换：发现 4 处，已添加类型转换
+△ UPDATE 类型转换：发现 2 处，已添加类型转换
+
+【文件统计】
+扫描文件数：X 个
+  1. src/main/resources/mapper/UserMapper.xml（150 行）
+  2. src/main/resources/mapper/OrderMapper.xml（200 行）
+  3. src/main/resources/mapper/ConfigMapper.xml（80 行）
+
+修改文件数：Y 个
+  1. src/main/resources/mapper/UserMapper.xml（修改 12 行）
+  2. src/main/resources/mapper/OrderMapper.xml（修改 8 行）
 
 ================================================
 ```
