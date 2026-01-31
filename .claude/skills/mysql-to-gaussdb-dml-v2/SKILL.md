@@ -238,7 +238,8 @@ ORDER BY age ASC NULLS FIRST, create_time DESC NULLS LAST
 
 ## 五、注意事项
 
-**XML 转义字符保留：** `&lt;` `&gt;` `&amp;` 不需要修改
+1. **最小化修改原则：** 只修改需要转换的语法问题，保持文件其他内容不变，不要做多余的修改
+2. **XML 转义字符保留：** `&lt;` `&gt;` `&amp;` 不需要修改
 
 ---
 
