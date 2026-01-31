@@ -123,6 +123,8 @@ WHERE status = 'active' AND name LIKE '%张%' AND code IN ('A', 'B')
 |-------|---------|
 | `DATE_FORMAT(d, '%Y-%m-%d')` | `TO_CHAR(d, 'YYYY-MM-DD')` |
 | `DATE_FORMAT(d, '%Y-%m-%d %H:%i:%s')` | `TO_CHAR(d, 'YYYY-MM-DD HH24:MI:SS')` |
+| `DATE_FORMAT(d, '%Y-%m-%d %H:00:00')` | `TO_CHAR(d, 'YYYY-MM-DD HH24:00:00')` |
+| `DATE_FORMAT(d, '%Y-%m-%d %H:%i:00')` | `TO_CHAR(d, 'YYYY-MM-DD HH24:MI:00')` |
 | `STR_TO_DATE(str, '%Y-%m-%d')` | `TO_DATE(str, 'YYYY-MM-DD')` |
 
 **格式符对照：** `%Y`→`YYYY`, `%m`→`MM`, `%d`→`DD`, `%H`→`HH24`, `%i`→`MI`, `%s`→`SS`
