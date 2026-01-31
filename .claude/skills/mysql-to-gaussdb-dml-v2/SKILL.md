@@ -20,7 +20,6 @@ argument-hint: "[Mapper文件或目录]"
 |-------|---------|
 | `IFNULL(a, b)` | `COALESCE(a, b)` |
 | `IF(cond, a, b)` | `CASE WHEN cond THEN a ELSE b END` |
-| `GROUP_CONCAT(col)` | `STRING_AGG(col::text, ',')` |
 | `DATE_FORMAT(d, '%Y-%m-%d')` | `TO_CHAR(d, 'YYYY-MM-DD')` |
 | `UNIX_TIMESTAMP()` | `EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)::INTEGER` |
 | `LAST_INSERT_ID()` | `currval('序列名')` |
@@ -97,8 +96,6 @@ WHERE status = 'active' AND name LIKE '%张%' AND code IN ('A', 'B')
 |-------|---------|------|
 | `IFNULL(a, b)` | `COALESCE(a, b)` | 空值处理 |
 | `IF(cond, a, b)` | `CASE WHEN cond THEN a ELSE b END` | 条件判断 |
-| `GROUP_CONCAT(col)` | `STRING_AGG(col::text, ',')` | 字符串聚合 |
-| `GROUP_CONCAT(col SEPARATOR ';')` | `STRING_AGG(col::text, ';')` | 指定分隔符 |
 | `JSON_OBJECT(k, v)` | `json_build_object(k, v)` | 构建 JSON |
 | `JSON_CONTAINS(col, val)` | `col::jsonb @> val::jsonb` | JSON 包含 |
 | `ANY_VALUE(col)` | `MAX(col)` | 任意值 |
@@ -231,6 +228,7 @@ ORDER BY age ASC NULLS FIRST, create_time DESC NULLS LAST
 
 - `LIMIT offset, count` / `LIMIT count`
 - `NOW()`, `COALESCE()`, `CONCAT()`
+- `GROUP_CONCAT(col)`, `GROUP_CONCAT(col SEPARATOR ';')`
 - `TRIM()`, `UPPER()`, `LOWER()`
 - `ABS()`, `ROUND()`, `CEIL()`, `FLOOR()`
 
@@ -254,7 +252,7 @@ grep -rn "\`" --include="*.xml" --include="*.java"
 grep -rnE '=\s*"[^"]+"' --include="*.xml" --include="*.java"
 
 # 函数
-grep -rn "IFNULL\|GROUP_CONCAT\|JSON_OBJECT\|ANY_VALUE" --include="*.xml"
+grep -rn "IFNULL\|JSON_OBJECT\|ANY_VALUE" --include="*.xml"
 grep -rnE "\bIF\s*\(" --include="*.xml"
 
 # 日期函数
