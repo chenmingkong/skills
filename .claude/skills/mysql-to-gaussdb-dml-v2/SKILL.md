@@ -247,51 +247,78 @@ ORDER BY age ASC NULLS FIRST, create_time DESC NULLS LAST
 ### 必须转换（期望：grep 无匹配）
 
 ```bash
-# 标识符
+# 1. 标识符 - 反引号
 grep -rn "\`" --include="*.xml" --include="*.java"
 
-# 双引号字符串
-grep -rnE '=\s*"[^"]+"' --include="*.xml" --include="*.java"
+# 2. 双引号字符串值
+grep -rnE "=\s*\"[^\"]+\"" --include="*.xml" --include="*.java"
+grep -rnE "LIKE\s*\"" --include="*.xml"
+grep -rnE "IN\s*\(.*\"" --include="*.xml"
 
-# 函数
-grep -rn "IFNULL\|JSON_OBJECT\|ANY_VALUE" --include="*.xml"
+# 3. 通用函数
+grep -rn "IFNULL" --include="*.xml"
 grep -rnE "\bIF\s*\(" --include="*.xml"
+grep -rn "JSON_OBJECT\|JSON_CONTAINS" --include="*.xml"
+grep -rn "ANY_VALUE" --include="*.xml"
 
-# 日期函数
-grep -rn "DATE_FORMAT\|STR_TO_DATE\|UNIX_TIMESTAMP\|FROM_UNIXTIME" --include="*.xml"
-grep -rn "CURDATE\|CURTIME\|SYSDATE\|DATEDIFF\|TIMESTAMPDIFF" --include="*.xml"
-grep -rnE "\b(DATE|TIME|YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)\s*\(" --include="*.xml"
+# 4. 日期时间函数
+grep -rn "DATE_FORMAT\|STR_TO_DATE" --include="*.xml"
+grep -rn "UNIX_TIMESTAMP\|FROM_UNIXTIME" --include="*.xml"
+grep -rn "CURDATE\|CURTIME\|SYSDATE" --include="*.xml"
+grep -rn "DATEDIFF\|TIMESTAMPDIFF\|DATE_ADD\|DATE_SUB" --include="*.xml"
+grep -rnE "\bDATE\s*\(" --include="*.xml"
+grep -rnE "\bTIME\s*\(" --include="*.xml"
+grep -rnE "\b(YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)\s*\(" --include="*.xml"
 ```
 
 ### 需人工检查
 
 | 检查项 | 命令 | 要点 |
 |--------|------|------|
-| 别名 | `grep -rnE "\bAS\s+\w+" --include="*.xml"` | 确认加了双引号 |
+| 别名 | `grep -rnE "\bAS\s+[a-zA-Z]" --include="*.xml"` | 确认加了双引号 |
 | LAST_INSERT_ID | `grep -rn "LAST_INSERT_ID"` | 需扫描 DDL 获取序列名 |
-| ON DUPLICATE KEY | `grep -rn "ON DUPLICATE KEY"` | 需扫描 DDL 确认唯一索引 |
+| ON DUPLICATE KEY | `grep -rn "ON DUPLICATE KEY"` | 需扫描 DDL 确认唯一索引，UPDATE 中不能包含唯一索引字段 |
 | ORDER BY | `grep -rnE "ORDER\s+BY"` | 确认加了 NULLS FIRST/LAST |
-| GROUP BY | `grep -rnE "GROUP\s+BY"` | 确认非聚合列已处理 |
-| INSERT/UPDATE | `grep -rnE "INSERT\|UPDATE"` | 需对照 Java 类确认类型转换 |
+| GROUP BY | `grep -rnE "GROUP\s+BY"` | 确认非聚合列已用聚合函数包装 |
+| INSERT/UPDATE 类型 | `grep -rnE "INSERT\|UPDATE"` | 对照 Java 类，String→INT 加 `::int`，String→JSON 加 `::json` |
 
 ### 转换报告
 
-转换完成后，输出以下统计信息：
+转换完成后，必须输出以下统计信息：
 
 ```
-=== 转换报告 ===
+================== 转换报告 ==================
 
+【扫描统计】
 扫描文件数：X 个
+总扫描行数：XXX 行
 扫描文件列表：
-  - src/main/resources/mapper/UserMapper.xml（扫描 150 行）
-  - src/main/resources/mapper/OrderMapper.xml（扫描 200 行）
-  - ...
+  1. src/main/resources/mapper/UserMapper.xml（150 行）
+  2. src/main/resources/mapper/OrderMapper.xml（200 行）
+  3. src/main/java/com/example/UserRepository.java（80 行）
+  ...
 
+【修改统计】
 修改文件数：Y 个
+总修改行数：YY 行
 修改文件列表：
-  - src/main/resources/mapper/UserMapper.xml（修改 5 行）
-  - src/main/resources/mapper/OrderMapper.xml（修改 3 行）
-  - ...
+  1. src/main/resources/mapper/UserMapper.xml（修改 5 行）
+     - 第 23 行：IFNULL → COALESCE
+     - 第 45 行：DATE_FORMAT → TO_CHAR
+     - ...
+  2. src/main/resources/mapper/OrderMapper.xml（修改 3 行）
+     - 第 12 行：去掉反引号
+     - ...
+
+【校验结果】
+✓ 反引号检查通过
+✓ 双引号字符串检查通过
+✓ IFNULL 函数检查通过
+✗ 发现 2 处需人工确认：
+  - UserMapper.xml:67 - AS userName 需确认是否加双引号
+  - OrderMapper.xml:89 - ORDER BY 需确认 NULLS 排序
+
+================================================
 ```
 
 ---
