@@ -274,6 +274,26 @@ grep -rnE "\b(DATE|TIME|YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)\s*\(" --include="*.xm
 | GROUP BY | `grep -rnE "GROUP\s+BY"` | 确认非聚合列已处理 |
 | INSERT/UPDATE | `grep -rnE "INSERT\|UPDATE"` | 需对照 Java 类确认类型转换 |
 
+### 转换报告
+
+转换完成后，输出以下统计信息：
+
+```
+=== 转换报告 ===
+
+扫描文件数：X 个
+扫描文件列表：
+  - src/main/resources/mapper/UserMapper.xml
+  - src/main/resources/mapper/OrderMapper.xml
+  - ...
+
+修改文件数：Y 个
+修改文件列表：
+  - src/main/resources/mapper/UserMapper.xml（5处修改）
+  - src/main/resources/mapper/OrderMapper.xml（3处修改）
+  - ...
+```
+
 ---
 
 ## 七、完整示例
