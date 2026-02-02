@@ -569,17 +569,17 @@ grep -rnE "INSERT\s+INTO|UPDATE\s+\w+\s+SET" --include="*.xml"  # 确认类型�
 ✅ UNIX_TIMESTAMP → EXTRACT(EPOCH FROM ...)
 ✅ FROM_UNIXTIME → TO_TIMESTAMP
 ✅ CURDATE/CURTIME/SYSDATE → CURRENT_DATE/CURRENT_TIME/NOW()
-✅ DATE_ADD/DATE_SUB → INTERVAL 运算
+✅ DATE_ADD/DATE_SUB → INTERVAL
 ✅ DATEDIFF/TIMESTAMPDIFF → EXTRACT
 ✅ DATE/TIME/YEAR/MONTH/DAY → TO_CHAR/::time/EXTRACT
 
 【类型转换】
 ✅ Java String → DB INT/JSON 已添加 ::int/::json
-✅ Java Integer/Long → DB INT 无需转换
+✅ Java Integer/Long → DB INT无需转换
 
 【特殊语法】
 ✅ LAST_INSERT_ID → currval('真实序列名')
-✅ ON DUPLICATE KEY UPDATE 不包含唯一索引字段
+✅ ON DUPLICATE KEY UPDATE（支持,不支持CONFLICT）
 ✅ ORDER BY 已添加 NULLS FIRST/LAST
 ✅ GROUP BY 非聚合列已用聚合函数包装
 
