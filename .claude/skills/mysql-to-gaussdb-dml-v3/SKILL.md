@@ -59,6 +59,8 @@ argument-hint: "[Mapper文件或目录]"
 | `FROM_UNIXTIME(ts)` | `TO_TIMESTAMP(ts)` |
 | `DATE_FORMAT(d, '%Y-%m-%d')` | `TO_CHAR(d, 'YYYY-MM-DD')` |
 | `DATE_FORMAT(d, '%Y-%m-%d %H:%i:%s')` | `TO_CHAR(d, 'YYYY-MM-DD HH24:MI:SS')` |
+| `DATE_FORMAT(d, '%Y-%m-%d %H:00:00')` | `TO_CHAR(d, 'YYYY-MM-DD HH24:00:00')` |
+| `DATE_FORMAT(d, '%Y-%m-%d %H:%i:00')` | `TO_CHAR(d, 'YYYY-MM-DD HH24:MI:00')` |
 | `STR_TO_DATE(str, '%Y-%m-%d')` | `TO_DATE(str, 'YYYY-MM-DD')` |
 | `DATE_ADD(d, INTERVAL n DAY)` | `TO_CHAR(CAST(d AS TIMESTAMP) + INTERVAL 'n DAY', 'YYYY-MM-DD')` |
 | `DATE_SUB(d, INTERVAL n DAY)` | `TO_CHAR(CAST(d AS TIMESTAMP) - INTERVAL 'n DAY', 'YYYY-MM-DD')` |
@@ -206,6 +208,8 @@ FROM user;
 ```sql
 -- MySQL
 SELECT DATE_FORMAT(create_time, '%Y-%m-%d') AS date_str,
+       DATE_FORMAT(create_time, '%Y-%m-%d %H:00:00') AS hour_str,
+       DATE_FORMAT(create_time, '%Y-%m-%d %H:%i:00') AS minute_str,
        DATE_ADD(create_time, INTERVAL 7 DAY) AS next_week,
        TIMESTAMPDIFF(DAY, create_time, NOW()) AS days_ago,
        YEAR(create_time) AS year
@@ -213,6 +217,8 @@ FROM orders;
 
 -- GaussDB
 SELECT TO_CHAR(create_time, 'YYYY-MM-DD') AS date_str,
+       TO_CHAR(create_time, 'YYYY-MM-DD HH24:00:00') AS hour_str,
+       TO_CHAR(create_time, 'YYYY-MM-DD HH24:MI:00') AS minute_str,
        TO_CHAR(CAST(create_time AS TIMESTAMP) + INTERVAL '7 DAY', 'YYYY-MM-DD') AS next_week,
        EXTRACT(DAY FROM (NOW() - create_time)) AS days_ago,
        EXTRACT(YEAR FROM create_time) AS year
