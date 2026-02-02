@@ -6,7 +6,7 @@ argument-hint: "[Mapper文件或目录]"
 
 # MySQL to GaussDB DML 转换（v3）
 
-MySQL DML 转 GaussDB 兼容语法。**版本505.2.1**
+MySQL DML转GaussDB兼容语法。**版本505.2.1**
 
 ## 扫描文件范围
 
@@ -303,7 +303,7 @@ SELECT currval('seq_user_id');
 
 ### 3.2 ON DUPLICATE KEY UPDATE 转换（需扫描 DDL）
 
-**支持不支持ON CONFLICT,UPDATE无唯一索**
+**支持,不支持ON CONFLICT,UPDATE无唯一索**
 
 #### 步骤 1：扫描唯一索引定义
 
