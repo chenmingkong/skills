@@ -119,41 +119,38 @@ SELECT t.id, t."group", t."type" FROM config t WHERE t."level" = 1;
 
 ### 1.2 字段别名（重要：仅 resultType="map" 需要加双引号）
 
-**规则：只有当 resultType 为 Map 时，别名才需要加双引号；resultType 为实体类时不需要加引号。**
+**规则：需检查 SQL 所在 `<select>` 标签的 resultType，只有 map 类型需加双引号，其他情况不需要。**
 
 #### 1.2.1 resultType="map" - 别名需要加双引号
 
-当返回类型为 Map 时，别名会成为 Map 的 key，需要加双引号保持驼峰命名：
+当 `<select>` 的 resultType 为 `map` 或 `java.util.Map` 时，别名需要加双引号：
 
-```sql
--- MySQL
-<select id="getUserStats" resultType="map">
-    SELECT user_name AS userName, COUNT(*) AS totalCount FROM user;
-</select>
-
--- GaussDB（别名加双引号，保持驼峰命名）
+```xml
+<!-- GaussDB（✅ resultType="map"，别名加双引号）-->
 <select id="getUserStats" resultType="map">
     SELECT user_name AS "userName", COUNT(*) AS "totalCount" FROM user;
 </select>
 ```
 
-#### 1.2.2 resultType 为实体类 - 别名不需要加引号
+**原因：** 别名作为 Map 的 key，需要双引号保持驼峰命名。
 
-当返回类型为实体类（如 User、Order 等）时，MyBatis 通过反射映射，别名不需要加引号：
+#### 1.2.2 其他情况 - 别名不需要加引号
 
-```sql
--- MySQL
+当 resultType 为实体类或使用 resultMap 时，别名不需要加引号：
+
+```xml
+<!-- GaussDB（❌ resultType 为实体类，别名不加引号）-->
 <select id="getUser" resultType="com.example.entity.User">
     SELECT user_id AS userId, user_name AS userName FROM user;
 </select>
 
--- GaussDB（别名不加引号，MyBatis 自动映射）
-<select id="getUser" resultType="com.example.entity.User">
+<!-- GaussDB（❌ 使用 resultMap，别名不加引号）-->
+<select id="getUserList" resultMap="userResultMap">
     SELECT user_id AS userId, user_name AS userName FROM user;
 </select>
 ```
 
-**注意：** 表别名（如 `FROM user u`）不需要加引号
+**原因：** MyBatis 通过反射或自定义映射，不依赖别名大小写。
 
 ### 1.3 字符串值必须用单引号
 
@@ -508,7 +505,10 @@ grep -rnE "\b(YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)\s*\(" --include="*.xml" --inclu
 ### 6.2 需人工检查项
 
 ```bash
-grep -rnE "\bAS\s+[a-zA-Z_][a-zA-Z0-9_]*\s*[,\s\n\r\)]" --include="*.xml"  # 字段别名（只有 resultType="map" 需加双引号）
+# 字段别名（需检查 <select> 的 resultType，只有 map 需加双引号）
+grep -rnE "\bAS\s+[a-zA-Z_][a-zA-Z0-9_]*\s*[,\s\n\r\)]" --include="*.xml"
+grep -rn 'resultType="map"' --include="*.xml"  # 辅助：查找所有 map 类型
+
 grep -rn "LAST_INSERT_ID" --include="*.xml"  # 需扫描 DDL 获取序列名
 grep -rn "ON DUPLICATE KEY" --include="*.xml"  # UPDATE 不能包含唯一索引字段
 grep -rnE "ORDER\s+BY" --include="*.xml"  # 确认 NULLS FIRST/LAST
@@ -528,7 +528,7 @@ grep -rnE "INSERT\s+INTO|UPDATE\s+\w+\s+SET" --include="*.xml"  # 确认类型�
 | UNIX_TIMESTAMP/FROM_UNIXTIME | `grep -rn "UNIX_TIMESTAMP\|FROM_UNIXTIME"` | 无匹配 |
 | CURDATE/CURTIME/SYSDATE | `grep -rn "CURDATE\|CURTIME\|SYSDATE"` | 无匹配 |
 | DATE_ADD/DATE_SUB/DATEDIFF | `grep -rnE "DATE_ADD\|DATE_SUB\|DATEDIFF"` | 无匹配 |
-| 字段别名 | `grep -rnE "\bAS\s+[a-zA-Z]"` | 确认 resultType="map" 加双引号 |
+| 字段别名 | `grep -rnE "\bAS\s+[a-zA-Z]"` | 检查 resultType，只有 map 加双引号 |
 | ORDER BY | `grep -rnE "ORDER\s+BY"` | 确认 NULLS FIRST/LAST |
 | GROUP BY | `grep -rnE "GROUP\s+BY"` | 确认聚合函数 |
 | LAST_INSERT_ID | `grep -rn "LAST_INSERT_ID"` | 扫描 DDL 获取序列名 |
@@ -545,7 +545,7 @@ grep -rnE "INSERT\s+INTO|UPDATE\s+\w+\s+SET" --include="*.xml"  # 确认类型�
 ✅ 普通字段反引号已去掉
 ✅ SQL 关键字字段已用双引号（order, desc, group, key, value, type 等）
 ✅ 字符串值已使用单引号
-✅ 字段别名（仅 resultType="map" 时添加双引号）
+✅ 字段别名（需检查上下文，仅 resultType="map" 时添加双引号）
 
 【通用函数】
 ✅ IFNULL → COALESCE
@@ -577,7 +577,7 @@ grep -rnE "INSERT\s+INTO|UPDATE\s+\w+\s+SET" --include="*.xml"  # 确认类型�
 
 【待人工检查】
 ⚠️ SQL 关键字字段：X 处（需确认关键字并用双引号）
-⚠️ 字段别名：X 处（只有 resultType="map" 需加双引号）
+⚠️ 字段别名：X 处（需检查所在 <select> 的 resultType，只有 map 加双引号）
 ⚠️ ORDER BY：X 处（需确认 NULLS）
 ⚠️ GROUP BY：X 处（需确认聚合函数）
 ⚠️ LAST_INSERT_ID：X 处（需扫描 DDL 获取序列名）
