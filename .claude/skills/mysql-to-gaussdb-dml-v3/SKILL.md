@@ -303,7 +303,7 @@ SELECT currval('seq_user_id');
 
 ### 3.2 ON DUPLICATE KEY UPDATE 转换（需扫描 DDL）
 
-**规则：UPDATE 子句中不能包含唯一索引字段**
+**支持不支持ON CONFLICT,UPDATE无唯一索**
 
 #### 步骤 1：扫描唯一索引定义
 

@@ -164,7 +164,12 @@ SELECT currval('user_id_seq');
 
 ### 3.2 ON DUPLICATE KEY UPDATE（需扫描 DDL）
 
-**规则：UPDATE 子句中不能包含唯一索引字段**
+**重要说明：**
+- GaussDB **支持** `ON DUPLICATE KEY UPDATE` 语法，保持使用这个语法即可
+- **不要使用** `ON CONFLICT DO UPDATE` 语法，我们的 GaussDB 版本不支持
+- UPDATE 子句中**不能包含唯一索引字段**
+
+**转换规则：保持 ON DUPLICATE KEY UPDATE 语法，只需移除 UPDATE 子句中的唯一索引字段**
 
 **步骤：**
 1. 扫描唯一索引：`grep -rn "UNIQUE\|PRIMARY KEY" --include="*.sql"`

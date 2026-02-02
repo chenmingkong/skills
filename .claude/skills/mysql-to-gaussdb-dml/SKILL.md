@@ -257,7 +257,12 @@ SELECT currval('sys_user_id_seq');  -- 真实序列名，非猜测
 
 ### 3.2 ON DUPLICATE KEY UPDATE 转换
 
-MySQL 的 `ON DUPLICATE KEY UPDATE` 语法在 GaussDB 中可以使用，但 **UPDATE 子句中不能包含唯一索引字段**。
+**重要说明：**
+- GaussDB **支持** `ON DUPLICATE KEY UPDATE` 语法，保持使用这个语法即可
+- **不要使用** `ON CONFLICT DO UPDATE` 语法，我们的 GaussDB 版本不支持
+- UPDATE 子句中**不能包含唯一索引字段**
+
+**转换规则：保持 ON DUPLICATE KEY UPDATE 语法，只需移除 UPDATE 子句中的唯一索引字段**
 
 **重要：必须先扫描 DDL/SQL 文件获取表的唯一索引字段！**
 
