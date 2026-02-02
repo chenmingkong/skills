@@ -117,16 +117,16 @@ SELECT t.id, t."group", t."type" FROM config t WHERE t."level" = 1;
 - `` `关键字字段` `` → `"关键字字段"` （改为双引号）
 - 需识别常见关键字并转换
 
-### 1.2 字段别名（重要：仅 resultType="map" 需要加双引号）
+### 1.2 字段别名（重要：map/HashMap 别名加双引号）
 
 **规则：检查 SQL 所在 `<select>` 的 resultType，只有 Map 类型需加双引号。**
 
-#### 1.2.1 resultType 为 Map - 别名需要加双引号
+#### 1.2.1 resultType 为 Map/HashMap - 别名加双引号
 
-当 `<select>` 的 resultType 为以下任一类型时，别名需要加双引号：
-- `map`
-- `java.util.Map`
-- `java.util.HashMap`
+**以下类型必须加双引号：**
+- `resultType="map"`
+- `resultType="java.util.Map"`
+- `resultType="java.util.HashMap"`
 
 ```xml
 <!-- GaussDB（✅ resultType="map"，别名加双引号）-->
@@ -303,7 +303,7 @@ SELECT currval('seq_user_id');
 
 ### 3.2 ON DUPLICATE KEY UPDATE 转换（需扫描 DDL）
 
-**支持,不支持ON CONFLICT,UPDATE无唯一索**
+**支持,不支持ON CONFLICT**
 
 #### 步骤 1：扫描唯一索引定义
 
