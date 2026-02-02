@@ -11,13 +11,13 @@ argument-hint: "[Mapper文件或目录]"
 ## 扫描文件范围
 
 ```
-**/*Mapper.xml                        # MyBatis 映射文件
-**/*Repository.java, **/*Dao.java    # @Query 原生 SQL
-**/*.java                            # 其他 Java 文件中的 SQL
-**/*.sql                             # DDL 文件（用于类型映射）
+**/*Mapper.xml                     # MyBatis 映射文件
+**/*Repository.java, **/*Dao.java  # @Query 原生 SQL
+**/*.java                          # 其他 Java 文件中的 SQL
+**/*.sql                           # DDL 文件（用于类型映射）
 ```
 
-**重要：必须对所有匹配的文件进行完整扫描，逐行检查并转换，确保从头到尾每一行都经过处理。**
+**重要：必须完整扫描所有匹配文件，逐行检查并转换。**
 
 ---
 
@@ -29,7 +29,7 @@ argument-hint: "[Mapper文件或目录]"
 |------|-------|---------|------|
 | 表名/字段名（普通） | `` `user` ``, `` `name` `` | `user`, `name` | 去掉反引号，不加双引号 |
 | 表名/字段名（关键字） | `` `order` ``, `` `desc` `` | `"order"`, `"desc"` | 关键字字段用双引号包裹 |
-| 字段别名（Map） | `AS userName` | `AS "userName"` | resultType="map" 时需加双引号 |
+| 字段别名（Map） | `AS userName` | `AS "userName"` | resultType="map/HashMap" 时需加双引号 |
 | 字段别名（实体类） | `AS userName` | `AS userName` | resultType 为实体类时不加引号 |
 | 表别名 | `FROM user u` | `FROM user u` | 不需要引号 |
 | 字符串值 | `"张三"`, `"%test%"` | `'张三'`, `'%test%'` | 必须用单引号 |
@@ -82,7 +82,7 @@ argument-hint: "[Mapper文件或目录]"
 
 ### 1.1 标识符（表名、字段名）
 
-**规则：普通标识符去掉反引号，不加双引号；SQL 关键字字段用双引号包裹**
+**规则：普通标识符去反引号；SQL 关键字用双引号**
 
 #### 1.1.1 普通标识符
 
@@ -91,48 +91,56 @@ argument-hint: "[Mapper文件或目录]"
 SELECT `id`, `user_name` FROM `user` WHERE `status` = 1;
 SELECT `User`.`Name` FROM `User`;
 
--- GaussDB（去掉反引号，不加双引号）
+-- GaussDB（去反引号）
 SELECT id, user_name FROM user WHERE status = 1;
 SELECT User.Name FROM User;
 ```
 
 #### 1.1.2 SQL 关键字字段（重要）
 
-**当表名或字段名是 SQL 关键字时，MySQL 使用反引号，GaussDB 必须使用双引号。**
+**表名或字段名是 SQL 关键字时，MySQL 用反引号，GaussDB 用双引号。**
 
-常见 SQL 关键字：`order`, `desc`, `group`, `key`, `value`, `type`, `comment`, `index`, `rank`, `level`, `user` 等
+常见关键字：`order`, `desc`, `group`, `key`, `value`, `type`, `comment`, `index`, `rank`, `level`, `user` 等
 
 ```sql
 -- MySQL（关键字使用反引号）
 SELECT `id`, `order`, `desc`, `key`, `value` FROM `order`;
 SELECT t.`id`, t.`group`, t.`type` FROM `config` t WHERE t.`level` = 1;
 
--- GaussDB（关键字必须使用双引号）
+-- GaussDB（关键字用双引号）
 SELECT id, "order", "desc", "key", "value" FROM "order";
 SELECT t.id, t."group", t."type" FROM config t WHERE t."level" = 1;
 ```
 
 **转换规则：**
-- `` `普通字段` `` → `普通字段` （去掉反引号）
-- `` `关键字字段` `` → `"关键字字段"` （反引号改为双引号）
-- 需要识别常见 SQL 关键字并正确转换
+- `` `普通字段` `` → `普通字段` （去反引号）
+- `` `关键字字段` `` → `"关键字字段"` （改为双引号）
+- 需识别常见关键字并转换
 
 ### 1.2 字段别名（重要：仅 resultType="map" 需要加双引号）
 
-**规则：需检查 SQL 所在 `<select>` 标签的 resultType，只有 map 类型需加双引号，其他情况不需要。**
+**规则：检查 SQL 所在 `<select>` 的 resultType，只有 Map 类型需加双引号。**
 
-#### 1.2.1 resultType="map" - 别名需要加双引号
+#### 1.2.1 resultType 为 Map - 别名需要加双引号
 
-当 `<select>` 的 resultType 为 `map` 或 `java.util.Map` 时，别名需要加双引号：
+当 `<select>` 的 resultType 为以下任一类型时，别名需要加双引号：
+- `map`
+- `java.util.Map`
+- `java.util.HashMap`
 
 ```xml
 <!-- GaussDB（✅ resultType="map"，别名加双引号）-->
 <select id="getUserStats" resultType="map">
     SELECT user_name AS "userName", COUNT(*) AS "totalCount" FROM user;
 </select>
+
+<!-- GaussDB（✅ resultType="java.util.HashMap"，别名加双引号）-->
+<select id="getUserMap" resultType="java.util.HashMap">
+    SELECT user_id AS "userId", user_name AS "userName" FROM user;
+</select>
 ```
 
-**原因：** 别名作为 Map 的 key，需要双引号保持驼峰命名。
+**原因：** 别名作为 Map 的 key，需双引号保持驼峰。
 
 #### 1.2.2 其他情况 - 别名不需要加引号
 
@@ -150,19 +158,19 @@ SELECT t.id, t."group", t."type" FROM config t WHERE t."level" = 1;
 </select>
 ```
 
-**原因：** MyBatis 通过反射或自定义映射，不依赖别名大小写。
+**原因：** MyBatis 通过反射或映射，不依赖别名。
 
 ### 1.3 字符串值必须用单引号
 
-GaussDB 中双引号仅用于别名，字符串值必须用单引号：
+GaussDB 中字符串值必须用单引号：
 
 ```sql
--- MySQL（双引号和单引号都可用于字符串）
+-- MySQL
 WHERE name = "张三" AND status = "active"
 WHERE name LIKE "%test%"
 WHERE code IN ("A", "B", "C")
 
--- GaussDB（字符串必须用单引号）
+-- GaussDB（用单引号）
 WHERE name = '张三' AND status = 'active'
 WHERE name LIKE '%test%'
 WHERE code IN ('A', 'B', 'C')
@@ -176,7 +184,7 @@ WHERE code IN ('A', 'B', 'C')
 
 #### 2.1.1 JSON_OBJECT 转换（重要）
 
-**MySQL 的 `JSON_OBJECT` 在 GaussDB 中统一转换为 `json_build_object`，但需要注意参数格式。**
+**MySQL 的 `JSON_OBJECT` 转换为 `json_build_object`，参数格式保持一致。**
 
 ```sql
 -- 场景 1：单键值对
@@ -197,7 +205,7 @@ SELECT JSON_OBJECT('scene', 'test', 'count', '1', 'status', 'active') AS config;
 SELECT json_build_object('id', id, 'name', user_name, 'age', age) AS user_json FROM user;
 SELECT json_build_object('scene', 'test', 'count', '1', 'status', 'active') AS config;
 
--- 场景 3：字段名作为 key/value（常见场景）
+-- 场景 3：字段名作为 key/value
 -- MySQL
 SELECT JSON_OBJECT(key_column, value_column) AS json_data FROM config;
 
@@ -206,10 +214,9 @@ SELECT json_build_object(key_column, value_column) AS json_data FROM config;
 ```
 
 **转换规则：**
-- `JSON_OBJECT(...)` → `json_build_object(...)` （函数名小写，参数完全相同）
-- 适用于单键值对、多键值对、字段名作为参数等所有场景
-- 字符串 key 保持单引号（如 `'name'`）
-- 字段名不需要引号（如 `user_name`）
+- `JSON_OBJECT(...)` → `json_build_object(...)`
+- 适用单/多键值对、字段名参数
+- 字符串 key 用单引号
 
 #### 2.1.2 其他通用函数示例
 
@@ -255,7 +262,7 @@ FROM orders;
 
 ### 3.1 LAST_INSERT_ID 转换（需扫描 DDL）
 
-**重要：必须先扫描 DDL/SQL 文件获取真实序列名，不要猜测！**
+**重要：必须先扫描 DDL 获取真实序列名，不要猜测！**
 
 #### 步骤 1：扫描项目中的序列定义
 
@@ -505,9 +512,10 @@ grep -rnE "\b(YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)\s*\(" --include="*.xml" --inclu
 ### 6.2 需人工检查项
 
 ```bash
-# 字段别名（需检查 <select> 的 resultType，只有 map 需加双引号）
+# 字段别名（需检查 <select> 的 resultType，只有 Map 类型需加双引号）
 grep -rnE "\bAS\s+[a-zA-Z_][a-zA-Z0-9_]*\s*[,\s\n\r\)]" --include="*.xml"
-grep -rn 'resultType="map"' --include="*.xml"  # 辅助：查找所有 map 类型
+grep -rn 'resultType="map"' --include="*.xml"  # 辅助：查找 map
+grep -rn 'resultType="java.util.HashMap"' --include="*.xml"  # 辅助：查找 HashMap
 
 grep -rn "LAST_INSERT_ID" --include="*.xml"  # 需扫描 DDL 获取序列名
 grep -rn "ON DUPLICATE KEY" --include="*.xml"  # UPDATE 不能包含唯一索引字段
@@ -528,7 +536,7 @@ grep -rnE "INSERT\s+INTO|UPDATE\s+\w+\s+SET" --include="*.xml"  # 确认类型�
 | UNIX_TIMESTAMP/FROM_UNIXTIME | `grep -rn "UNIX_TIMESTAMP\|FROM_UNIXTIME"` | 无匹配 |
 | CURDATE/CURTIME/SYSDATE | `grep -rn "CURDATE\|CURTIME\|SYSDATE"` | 无匹配 |
 | DATE_ADD/DATE_SUB/DATEDIFF | `grep -rnE "DATE_ADD\|DATE_SUB\|DATEDIFF"` | 无匹配 |
-| 字段别名 | `grep -rnE "\bAS\s+[a-zA-Z]"` | 检查 resultType，只有 map 加双引号 |
+| 字段别名 | `grep -rnE "\bAS\s+[a-zA-Z]"` | Map 类型加双引号 |
 | ORDER BY | `grep -rnE "ORDER\s+BY"` | 确认 NULLS FIRST/LAST |
 | GROUP BY | `grep -rnE "GROUP\s+BY"` | 确认聚合函数 |
 | LAST_INSERT_ID | `grep -rn "LAST_INSERT_ID"` | 扫描 DDL 获取序列名 |
@@ -545,18 +553,18 @@ grep -rnE "INSERT\s+INTO|UPDATE\s+\w+\s+SET" --include="*.xml"  # 确认类型�
 ✅ 普通字段反引号已去掉
 ✅ SQL 关键字字段已用双引号（order, desc, group, key, value, type 等）
 ✅ 字符串值已使用单引号
-✅ 字段别名（需检查上下文，仅 resultType="map" 时添加双引号）
+✅ 字段别名（Map 类型加双引号：map/HashMap）
 
 【通用函数】
 ✅ IFNULL → COALESCE
 ✅ IF() → CASE WHEN
 ✅ GROUP_CONCAT → STRING_AGG
-✅ JSON_OBJECT → json_build_object（支持单/多键值对、字段名参数）
+✅ JSON_OBJECT → json_build_object
 ✅ JSON_CONTAINS → ::jsonb @> ::jsonb
 ✅ ANY_VALUE → MAX
 
 【日期时间函数】
-✅ DATE_FORMAT → TO_CHAR（支持日期、时间、小时、分钟格式）
+✅ DATE_FORMAT → TO_CHAR
 ✅ STR_TO_DATE → TO_DATE/TO_TIMESTAMP
 ✅ UNIX_TIMESTAMP → EXTRACT(EPOCH FROM ...)
 ✅ FROM_UNIXTIME → TO_TIMESTAMP
@@ -576,12 +584,12 @@ grep -rnE "INSERT\s+INTO|UPDATE\s+\w+\s+SET" --include="*.xml"  # 确认类型�
 ✅ GROUP BY 非聚合列已用聚合函数包装
 
 【待人工检查】
-⚠️ SQL 关键字字段：X 处（需确认关键字并用双引号）
-⚠️ 字段别名：X 处（需检查所在 <select> 的 resultType，只有 map 加双引号）
+⚠️ SQL 关键字字段：X 处（需用双引号）
+⚠️ 字段别名：X 处（Map 类型加双引号：map/HashMap）
 ⚠️ ORDER BY：X 处（需确认 NULLS）
 ⚠️ GROUP BY：X 处（需确认聚合函数）
-⚠️ LAST_INSERT_ID：X 处（需扫描 DDL 获取序列名）
-⚠️ ON DUPLICATE KEY：X 处（需确认无唯一索引字段）
+⚠️ LAST_INSERT_ID：X 处（需获取序列名）
+⚠️ ON DUPLICATE KEY：X 处（需确认无唯一索引）
 ⚠️ INSERT/UPDATE 类型转换：X 处（需对照 Java 类）
 
 【统计】
@@ -706,7 +714,7 @@ public class ConfigDTO {
 </select>
 ```
 
-**常见需要加双引号的 SQL 关键字：**
+**常见 SQL 关键字需加双引号：**
 
 `order`, `desc`, `asc`, `group`, `key`, `value`, `type`, `comment`, `index`, `rank`, `level`, `user`, `position`, `option`, `select`, `insert`, `update`, `delete`, `where`, `from`, `table`, `column`, `check`, `default` 等
 ```
