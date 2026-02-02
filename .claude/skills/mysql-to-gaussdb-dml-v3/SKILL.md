@@ -41,7 +41,8 @@ argument-hint: "[Mapper文件或目录]"
 | `IF(cond, a, b)` | `CASE WHEN cond THEN a ELSE b END` |
 | `GROUP_CONCAT(col)` | `STRING_AGG(col::text, ',')` |
 | `GROUP_CONCAT(col SEPARATOR ';')` | `STRING_AGG(col::text, ';')` |
-| `JSON_OBJECT(k1, v1, k2, v2)` | `json_build_object(k1, v1, k2, v2)` |
+| `JSON_OBJECT(key, value)` | `json_build_object(key, value)` |
+| `JSON_OBJECT(k1, v1, k2, v2, ...)` | `json_build_object(k1, v1, k2, v2, ...)` |
 | `JSON_CONTAINS(col, val)` | `col::jsonb @> val::jsonb` |
 | `ANY_VALUE(col)` | `MAX(col)` |
 | `SELECT EXISTS(...)` | `SELECT (EXISTS(...))::int` |
@@ -147,21 +148,56 @@ WHERE code IN ('A', 'B', 'C')
 
 ### 2.1 通用函数
 
-示例：
+#### 2.1.1 JSON_OBJECT 转换（重要）
+
+**MySQL 的 `JSON_OBJECT` 在 GaussDB 中统一转换为 `json_build_object`，但需要注意参数格式。**
+
+```sql
+-- 场景 1：单键值对
+-- MySQL
+SELECT JSON_OBJECT('name', user_name) AS user_json FROM user;
+SELECT JSON_OBJECT('id', id) AS id_json FROM user;
+
+-- GaussDB（函数名改为 json_build_object）
+SELECT json_build_object('name', user_name) AS user_json FROM user;
+SELECT json_build_object('id', id) AS id_json FROM user;
+
+-- 场景 2：多键值对
+-- MySQL
+SELECT JSON_OBJECT('id', id, 'name', user_name, 'age', age) AS user_json FROM user;
+SELECT JSON_OBJECT('scene', 'test', 'count', '1', 'status', 'active') AS config;
+
+-- GaussDB（函数名改为 json_build_object，参数保持相同）
+SELECT json_build_object('id', id, 'name', user_name, 'age', age) AS user_json FROM user;
+SELECT json_build_object('scene', 'test', 'count', '1', 'status', 'active') AS config;
+
+-- 场景 3：字段名作为 key/value（常见场景）
+-- MySQL
+SELECT JSON_OBJECT(key_column, value_column) AS json_data FROM config;
+
+-- GaussDB
+SELECT json_build_object(key_column, value_column) AS json_data FROM config;
+```
+
+**转换规则：**
+- `JSON_OBJECT(...)` → `json_build_object(...)` （函数名小写，参数完全相同）
+- 适用于单键值对、多键值对、字段名作为参数等所有场景
+- 字符串 key 保持单引号（如 `'name'`）
+- 字段名不需要引号（如 `user_name`）
+
+#### 2.1.2 其他通用函数示例
 
 ```sql
 -- MySQL
 SELECT IFNULL(nickname, username) AS display_name,
        IF(status = 1, '启用', '禁用') AS status_text,
-       GROUP_CONCAT(name) AS members,
-       JSON_OBJECT('scene', 'test', 'count', '1') AS config
+       GROUP_CONCAT(name) AS members
 FROM user;
 
 -- GaussDB
 SELECT COALESCE(nickname, username) AS display_name,
        CASE WHEN status = 1 THEN '启用' ELSE '禁用' END AS status_text,
-       STRING_AGG(name::text, ',') AS members,
-       json_build_object('scene', 'test', 'count', '1') AS config
+       STRING_AGG(name::text, ',') AS members
 FROM user;
 ```
 
