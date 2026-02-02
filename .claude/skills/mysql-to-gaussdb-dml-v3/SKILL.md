@@ -29,7 +29,8 @@ argument-hint: "[Mapper文件或目录]"
 |------|-------|---------|------|
 | 表名/字段名（普通） | `` `user` ``, `` `name` `` | `user`, `name` | 去掉反引号，不加双引号 |
 | 表名/字段名（关键字） | `` `order` ``, `` `desc` `` | `"order"`, `"desc"` | 关键字字段用双引号包裹 |
-| 字段别名 | `AS userName` | `AS "userName"` | 只有别名需要加双引号 |
+| 字段别名（Map） | `AS userName` | `AS "userName"` | resultType="map" 时需加双引号 |
+| 字段别名（实体类） | `AS userName` | `AS userName` | resultType 为实体类时不加引号 |
 | 表别名 | `FROM user u` | `FROM user u` | 不需要引号 |
 | 字符串值 | `"张三"`, `"%test%"` | `'张三'`, `'%test%'` | 必须用单引号 |
 
@@ -116,14 +117,40 @@ SELECT t.id, t."group", t."type" FROM config t WHERE t."level" = 1;
 - `` `关键字字段` `` → `"关键字字段"` （反引号改为双引号）
 - 需要识别常见 SQL 关键字并正确转换
 
-### 1.2 字段别名（只有别名加双引号）
+### 1.2 字段别名（重要：仅 resultType="map" 需要加双引号）
+
+**规则：只有当 resultType 为 Map 时，别名才需要加双引号；resultType 为实体类时不需要加引号。**
+
+#### 1.2.1 resultType="map" - 别名需要加双引号
+
+当返回类型为 Map 时，别名会成为 Map 的 key，需要加双引号保持驼峰命名：
 
 ```sql
 -- MySQL
-SELECT user_name AS userName, COUNT(*) AS totalCount FROM user;
+<select id="getUserStats" resultType="map">
+    SELECT user_name AS userName, COUNT(*) AS totalCount FROM user;
+</select>
 
--- GaussDB（只给别名加双引号，字段名不加）
-SELECT user_name AS "userName", COUNT(*) AS "totalCount" FROM user;
+-- GaussDB（别名加双引号，保持驼峰命名）
+<select id="getUserStats" resultType="map">
+    SELECT user_name AS "userName", COUNT(*) AS "totalCount" FROM user;
+</select>
+```
+
+#### 1.2.2 resultType 为实体类 - 别名不需要加引号
+
+当返回类型为实体类（如 User、Order 等）时，MyBatis 通过反射映射，别名不需要加引号：
+
+```sql
+-- MySQL
+<select id="getUser" resultType="com.example.entity.User">
+    SELECT user_id AS userId, user_name AS userName FROM user;
+</select>
+
+-- GaussDB（别名不加引号，MyBatis 自动映射）
+<select id="getUser" resultType="com.example.entity.User">
+    SELECT user_id AS userId, user_name AS userName FROM user;
+</select>
 ```
 
 **注意：** 表别名（如 `FROM user u`）不需要加引号
@@ -481,7 +508,7 @@ grep -rnE "\b(YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)\s*\(" --include="*.xml" --inclu
 ### 6.2 需人工检查项
 
 ```bash
-grep -rnE "\bAS\s+[a-zA-Z_][a-zA-Z0-9_]*\s*[,\s\n\r\)]" --include="*.xml"  # 字段别名
+grep -rnE "\bAS\s+[a-zA-Z_][a-zA-Z0-9_]*\s*[,\s\n\r\)]" --include="*.xml"  # 字段别名（只有 resultType="map" 需加双引号）
 grep -rn "LAST_INSERT_ID" --include="*.xml"  # 需扫描 DDL 获取序列名
 grep -rn "ON DUPLICATE KEY" --include="*.xml"  # UPDATE 不能包含唯一索引字段
 grep -rnE "ORDER\s+BY" --include="*.xml"  # 确认 NULLS FIRST/LAST
@@ -501,7 +528,7 @@ grep -rnE "INSERT\s+INTO|UPDATE\s+\w+\s+SET" --include="*.xml"  # 确认类型�
 | UNIX_TIMESTAMP/FROM_UNIXTIME | `grep -rn "UNIX_TIMESTAMP\|FROM_UNIXTIME"` | 无匹配 |
 | CURDATE/CURTIME/SYSDATE | `grep -rn "CURDATE\|CURTIME\|SYSDATE"` | 无匹配 |
 | DATE_ADD/DATE_SUB/DATEDIFF | `grep -rnE "DATE_ADD\|DATE_SUB\|DATEDIFF"` | 无匹配 |
-| 字段别名 | `grep -rnE "\bAS\s+[a-zA-Z]"` | 确认加双引号 |
+| 字段别名 | `grep -rnE "\bAS\s+[a-zA-Z]"` | 确认 resultType="map" 加双引号 |
 | ORDER BY | `grep -rnE "ORDER\s+BY"` | 确认 NULLS FIRST/LAST |
 | GROUP BY | `grep -rnE "GROUP\s+BY"` | 确认聚合函数 |
 | LAST_INSERT_ID | `grep -rn "LAST_INSERT_ID"` | 扫描 DDL 获取序列名 |
@@ -518,7 +545,7 @@ grep -rnE "INSERT\s+INTO|UPDATE\s+\w+\s+SET" --include="*.xml"  # 确认类型�
 ✅ 普通字段反引号已去掉
 ✅ SQL 关键字字段已用双引号（order, desc, group, key, value, type 等）
 ✅ 字符串值已使用单引号
-✅ 字段别名已添加双引号
+✅ 字段别名（仅 resultType="map" 时添加双引号）
 
 【通用函数】
 ✅ IFNULL → COALESCE
@@ -550,7 +577,7 @@ grep -rnE "INSERT\s+INTO|UPDATE\s+\w+\s+SET" --include="*.xml"  # 确认类型�
 
 【待人工检查】
 ⚠️ SQL 关键字字段：X 处（需确认关键字并用双引号）
-⚠️ 字段别名：X 处（需确认已添加双引号）
+⚠️ 字段别名：X 处（只有 resultType="map" 需加双引号）
 ⚠️ ORDER BY：X 处（需确认 NULLS）
 ⚠️ GROUP BY：X 处（需确认聚合函数）
 ⚠️ LAST_INSERT_ID：X 处（需扫描 DDL 获取序列名）
