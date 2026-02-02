@@ -442,15 +442,11 @@ ORDER BY age ASC NULLS FIRST, create_time DESC NULLS LAST
 **标识符和字符串：**
 
 ```bash
-# 检查反引号（普通字段去掉，SQL 关键字字段改为双引号）
+# 检查反引号（普通字段去掉，关键字字段改为双引号）
 grep -rn "\`" --include="*.xml" --include="*.java"
-# 注意：需人工确认是否为 SQL 关键字（order, desc, group, key, value, type 等）
-# - 普通字段：`user_name` → user_name（去掉反引号）
-# - 关键字字段：`order` → "order"（反引号改为双引号）
 
-# 检查双引号字符串值（GaussDB 字符串应用单引号，但关键字字段可用双引号）
+# 检查双引号字符串值（需区分字符串值和关键字字段）
 grep -rnE "=\s*\"[^\"]+\"" --include="*.xml" --include="*.java"
-# 注意：需区分字符串值和关键字字段
 ```
 
 **通用函数：**
@@ -485,45 +481,31 @@ grep -rnE "\b(YEAR|MONTH|DAY|HOUR|MINUTE|SECOND)\s*\(" --include="*.xml" --inclu
 ### 6.2 需人工检查项
 
 ```bash
-# 字段别名（确认已添加双引号）
-grep -rnE "\bAS\s+[a-zA-Z_][a-zA-Z0-9_]*\s*[,\s\n\r\)]" --include="*.xml"
-
-# LAST_INSERT_ID（需扫描 DDL 获取真实序列名）
-grep -rn "LAST_INSERT_ID" --include="*.xml" --include="*.java"
-
-# ON DUPLICATE KEY（UPDATE 中不能包含唯一索引字段）
-grep -rn "ON DUPLICATE KEY" --include="*.xml" --include="*.java"
-
-# ORDER BY（确认已添加 NULLS FIRST/LAST）
-grep -rnE "ORDER\s+BY" --include="*.xml" --include="*.java"
-
-# GROUP BY（确认非聚合列已用聚合函数包装）
-grep -rnE "GROUP\s+BY" --include="*.xml" --include="*.java"
-
-# INSERT/UPDATE（需对照 Java 类型和 DDL 类型）
-grep -rnE "INSERT\s+INTO" --include="*.xml" --include="*.java"
-grep -rnE "UPDATE\s+\w+\s+SET" --include="*.xml" --include="*.java"
+grep -rnE "\bAS\s+[a-zA-Z_][a-zA-Z0-9_]*\s*[,\s\n\r\)]" --include="*.xml"  # 字段别名
+grep -rn "LAST_INSERT_ID" --include="*.xml"  # 需扫描 DDL 获取序列名
+grep -rn "ON DUPLICATE KEY" --include="*.xml"  # UPDATE 不能包含唯一索引字段
+grep -rnE "ORDER\s+BY" --include="*.xml"  # 确认 NULLS FIRST/LAST
+grep -rnE "GROUP\s+BY" --include="*.xml"  # 确认非聚合列用聚合函数
+grep -rnE "INSERT\s+INTO|UPDATE\s+\w+\s+SET" --include="*.xml"  # 确认类型转换
 ```
 
 ### 6.3 校验清单
 
 | 检查项 | 命令 | 期望结果 |
 |--------|------|----------|
-| 反引号 | `grep -rn "\`"` | 无匹配 |
-| 双引号字符串 | `grep -rnE "=\s*\"[^\"]+\""` | 无匹配 |
-| IFNULL | `grep -rn "IFNULL"` | 无匹配 |
-| IF( | `grep -rnE "\bIF\s*\("` | 无匹配 |
-| GROUP_CONCAT | `grep -rn "GROUP_CONCAT"` | 无匹配 |
-| JSON_OBJECT | `grep -rn "JSON_OBJECT"` | 无匹配 |
-| DATE_FORMAT | `grep -rn "DATE_FORMAT"` | 无匹配 |
-| STR_TO_DATE | `grep -rn "STR_TO_DATE"` | 无匹配 |
-| UNIX_TIMESTAMP | `grep -rn "UNIX_TIMESTAMP"` | 无匹配 |
-| DATE_ADD/SUB | `grep -rn "DATE_ADD\|DATE_SUB"` | 无匹配 |
-| DATEDIFF | `grep -rn "DATEDIFF"` | 无匹配 |
-| 字段别名 | `grep -rnE "\bAS\s+[a-zA-Z]"` | 人工确认加双引号 |
-| ORDER BY | `grep -rnE "ORDER\s+BY"` | 人工确认 NULLS |
-| GROUP BY | `grep -rnE "GROUP\s+BY"` | 人工确认聚合函数 |
-| INSERT 类型 | `grep -rn "INSERT"` | 人工确认类型转换 |
+| 反引号 | `grep -rn "\`"` | 人工确认（关键字用双引号，普通字段去掉） |
+| 双引号字符串 | `grep -rnE "=\s*\"[^\"]+\""` | 人工确认（区分字符串值和关键字字段） |
+| IFNULL/IF/GROUP_CONCAT | `grep -rnE "IFNULL\|IF\(\|GROUP_CONCAT"` | 无匹配 |
+| JSON_OBJECT/JSON_CONTAINS | `grep -rn "JSON_OBJECT\|JSON_CONTAINS"` | 无匹配 |
+| DATE_FORMAT/STR_TO_DATE | `grep -rn "DATE_FORMAT\|STR_TO_DATE"` | 无匹配 |
+| UNIX_TIMESTAMP/FROM_UNIXTIME | `grep -rn "UNIX_TIMESTAMP\|FROM_UNIXTIME"` | 无匹配 |
+| CURDATE/CURTIME/SYSDATE | `grep -rn "CURDATE\|CURTIME\|SYSDATE"` | 无匹配 |
+| DATE_ADD/DATE_SUB/DATEDIFF | `grep -rnE "DATE_ADD\|DATE_SUB\|DATEDIFF"` | 无匹配 |
+| 字段别名 | `grep -rnE "\bAS\s+[a-zA-Z]"` | 确认加双引号 |
+| ORDER BY | `grep -rnE "ORDER\s+BY"` | 确认 NULLS FIRST/LAST |
+| GROUP BY | `grep -rnE "GROUP\s+BY"` | 确认聚合函数 |
+| LAST_INSERT_ID | `grep -rn "LAST_INSERT_ID"` | 扫描 DDL 获取序列名 |
+| INSERT/UPDATE 类型 | `grep -rn "INSERT\|UPDATE"` | 确认类型转换 |
 
 ### 6.4 生成校验报告
 
@@ -532,44 +514,53 @@ grep -rnE "UPDATE\s+\w+\s+SET" --include="*.xml" --include="*.java"
 ```
 ============ DML 迁移校验报告 ============
 
-✅ 标识符和字符串
-   - 反引号已去掉（表名、字段名不加双引号）
-   - 字符串值已使用单引号
-   - 字段别名已添加双引号
+【标识符和字符串】
+✅ 普通字段反引号已去掉
+✅ SQL 关键字字段已用双引号（order, desc, group, key, value, type 等）
+✅ 字符串值已使用单引号
+✅ 字段别名已添加双引号
 
-✅ 通用函数
-   - IFNULL → COALESCE
-   - IF() → CASE WHEN
-   - GROUP_CONCAT → STRING_AGG
-   - JSON_OBJECT → json_build_object
-   - JSON_CONTAINS → ::jsonb @> ::jsonb
+【通用函数】
+✅ IFNULL → COALESCE
+✅ IF() → CASE WHEN
+✅ GROUP_CONCAT → STRING_AGG
+✅ JSON_OBJECT → json_build_object（支持单/多键值对、字段名参数）
+✅ JSON_CONTAINS → ::jsonb @> ::jsonb
+✅ ANY_VALUE → MAX
 
-✅ 日期时间函数
-   - DATE_FORMAT → TO_CHAR
-   - STR_TO_DATE → TO_DATE/TO_TIMESTAMP
-   - UNIX_TIMESTAMP → EXTRACT(EPOCH FROM ...)
-   - DATE_ADD/DATE_SUB → INTERVAL 运算
-   - DATEDIFF → date1::date - date2::date
-   - DATE/TIME/YEAR/MONTH/DAY → EXTRACT/TO_CHAR/::time
+【日期时间函数】
+✅ DATE_FORMAT → TO_CHAR（支持日期、时间、小时、分钟格式）
+✅ STR_TO_DATE → TO_DATE/TO_TIMESTAMP
+✅ UNIX_TIMESTAMP → EXTRACT(EPOCH FROM ...)
+✅ FROM_UNIXTIME → TO_TIMESTAMP
+✅ CURDATE/CURTIME/SYSDATE → CURRENT_DATE/CURRENT_TIME/NOW()
+✅ DATE_ADD/DATE_SUB → INTERVAL 运算
+✅ DATEDIFF/TIMESTAMPDIFF → EXTRACT
+✅ DATE/TIME/YEAR/MONTH/DAY → TO_CHAR/::time/EXTRACT
 
-✅ 类型转换
-   - Java String → DB INT 已添加 ::int
-   - Java String → DB JSON 已添加 ::json
-   - Java Integer/Long → DB INT 无需转换
+【类型转换】
+✅ Java String → DB INT/JSON 已添加 ::int/::json
+✅ Java Integer/Long → DB INT 无需转换
 
-✅ 特殊语法
-   - LAST_INSERT_ID → currval('真实序列名')
-   - ON DUPLICATE KEY UPDATE 不包含唯一索引字段
+【特殊语法】
+✅ LAST_INSERT_ID → currval('真实序列名')
+✅ ON DUPLICATE KEY UPDATE 不包含唯一索引字段
+✅ ORDER BY 已添加 NULLS FIRST/LAST
+✅ GROUP BY 非聚合列已用聚合函数包装
 
-⚠️ 待人工检查项
-   - 字段别名：确认已添加双引号
-   - ORDER BY：确认已添加 NULLS FIRST/LAST
-   - GROUP BY：确认非聚合列已用聚合函数包装
+【待人工检查】
+⚠️ SQL 关键字字段：X 处（需确认关键字并用双引号）
+⚠️ 字段别名：X 处（需确认已添加双引号）
+⚠️ ORDER BY：X 处（需确认 NULLS）
+⚠️ GROUP BY：X 处（需确认聚合函数）
+⚠️ LAST_INSERT_ID：X 处（需扫描 DDL 获取序列名）
+⚠️ ON DUPLICATE KEY：X 处（需确认无唯一索引字段）
+⚠️ INSERT/UPDATE 类型转换：X 处（需对照 Java 类）
 
-============ 统计 ============
-扫描文件数: X 个
-已转换项: X 处
-待人工检查: X 处
+【统计】
+扫描文件数：X 个 | 修改文件数：X 个 | 已转换项：X 处 | 待检查：X 处
+
+============================================
 ```
 
 ---
