@@ -20,16 +20,18 @@ argument-hint: "[Mapper文件或目录]"
 
 ## 1. 标识符引号转换（表名、字段名）
 
-MySQL 使用反引号 `` ` `` 包裹表名和字段名，GaussDB 中**表名和字段名不需要加双引号**，直接去掉反引号即可：
+### 1.1 普通标识符
+
+MySQL 使用反引号 `` ` `` 包裹表名和字段名，GaussDB 中需要根据情况处理：
 
 ```sql
 -- MySQL 写法（有反引号）
 SELECT `id`, `user_name` FROM `user` WHERE `status` = 1;
 SELECT `User`.`Name` FROM `User`;
 
--- GaussDB 写法（直接去掉反引号，不加双引号）
-SELECT id, user_name FROM user WHERE status = 1;
-SELECT User.Name FROM User;
+-- GaussDB 写法（反引号改为双引号）
+SELECT "id", "user_name" FROM "user" WHERE "status" = 1;
+SELECT "User"."Name" FROM "User";
 
 -- MySQL 写法（无反引号）
 SELECT id, user_name FROM user WHERE status = 1;
@@ -39,35 +41,78 @@ SELECT id, user_name FROM user WHERE status = 1;
 ```
 
 **转换规则：**
-- `` `identifier` `` → `identifier` （去掉反引号，不加双引号）
-- `` `table`.`column` `` → `table.column` （去掉反引号）
+- `` `identifier` `` → `"identifier"` （反引号改为双引号）
+- `` `table`.`column` `` → `"table"."column"` （反引号改为双引号）
 - `identifier` → `identifier` （无反引号则保持原样）
 
-### 1.1 字段别名必须加双引号
+### 1.2 SQL 关键字字段（重要）
 
-**只有字段别名需要加双引号**，用于保持别名的大小写：
+当表名或字段名是 SQL 关键字时，MySQL 使用反引号，GaussDB 必须使用双引号：
+
+常见 SQL 关键字：`order`, `desc`, `group`, `key`, `value`, `type`, `comment`, `index`, `rank`, `level`, `user` 等
 
 ```sql
--- MySQL（别名可以不加引号）
-SELECT user_name AS userName, create_time AS createTime FROM user;
-SELECT COUNT(*) AS totalCount FROM orders;
-SELECT id, name AS displayName FROM product;
+-- MySQL（关键字使用反引号）
+SELECT `id`, `order`, `desc`, `key`, `value` FROM `order`;
+SELECT t.`id`, t.`group`, t.`type` FROM `config` t WHERE t.`level` = 1;
 
--- GaussDB（只给别名加双引号，字段名不加）
-SELECT user_name AS "userName", create_time AS "createTime" FROM user;
-SELECT COUNT(*) AS "totalCount" FROM orders;
-SELECT id, name AS "displayName" FROM product;
+-- GaussDB（关键字必须使用双引号）
+SELECT id, "order", "desc", "key", "value" FROM "order";
+SELECT t.id, t."group", t."type" FROM config t WHERE t."level" = 1;
 ```
 
 **转换规则：**
-- `AS aliasName` → `AS "aliasName"` （别名加双引号）
-- `AS alias_name` → `AS "alias_name"` （下划线别名也加双引号）
-- `column aliasName`（无 AS）→ `column "aliasName"` （隐式别名也需要加双引号）
+- `` `普通字段` `` → `"普通字段"` （反引号改为双引号）
+- `` `关键字字段` `` → `"关键字字段"` （关键字必须用双引号）
+- `关键字字段` → `"关键字字段"` （无反引号的关键字也需加双引号）
+- `普通字段` → `普通字段` （无反引号的普通字段保持原样）
+
+### 1.3 字段别名（重要：仅 resultType="map/HashMap" 需要加双引号）
+
+**规则：需检查 SQL 所在 `<select>` 标签的 resultType，只有 Map 类型需加双引号，其他情况不需要。**
+
+#### 1.3.1 resultType 为 Map - 别名需要加双引号
+
+当 `<select>` 的 resultType 为以下任一类型时，别名需要加双引号：
+- `map`
+- `java.util.Map`
+- `java.util.HashMap`
+
+```xml
+<!-- GaussDB（✅ resultType="map"，别名加双引号）-->
+<select id="getUserStats" resultType="map">
+    SELECT user_name AS "userName", COUNT(*) AS "totalCount" FROM user;
+</select>
+
+<!-- GaussDB（✅ resultType="java.util.HashMap"，别名加双引号）-->
+<select id="getUserMap" resultType="java.util.HashMap">
+    SELECT user_id AS "userId", user_name AS "userName" FROM user;
+</select>
+```
+
+**原因：** 别名作为 Map 的 key，需要双引号保持驼峰命名。
+
+#### 1.3.2 其他情况 - 别名不需要加引号
+
+当 resultType 为实体类或使用 resultMap 时，别名不需要加引号：
+
+```xml
+<!-- GaussDB（❌ resultType 为实体类，别名不加引号）-->
+<select id="getUser" resultType="com.example.entity.User">
+    SELECT user_id AS userId, user_name AS userName FROM user;
+</select>
+
+<!-- GaussDB（❌ 使用 resultMap，别名不加引号）-->
+<select id="getUserList" resultMap="userResultMap">
+    SELECT user_id AS userId, user_name AS userName FROM user;
+</select>
+```
+
+**原因：** MyBatis 通过反射或自定义映射，不依赖别名大小写。
 
 **注意事项：**
-- **表名、字段名不加双引号**，只有别名需要加
-- 别名中的大小写会被保留（如 `"userName"` 保持驼峰命名）
 - 表别名（如 `FROM user u`）不需要加引号，保持原样即可
+- 必须检查 SQL 所在的 `<select>` 标签的 resultType 属性
 
 ## 2. 字符串值引号转换
 
@@ -693,8 +738,8 @@ grep -rnE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
 
 | 检查项 | 命令 | 期望结果 |
 |--------|------|----------|
-| 反引号 | `grep -rn "\`"` | 无匹配 |
-| 双引号字符串 | `grep -rnE "=\s*\"[^\"]+\""` | 无匹配 |
+| 反引号 | `grep -rn "\`"` | 人工确认（反引号需改为双引号） |
+| 双引号字符串 | `grep -rnE "=\s*\"[^\"]+\""` | 人工确认（字符串值需改为单引号） |
 
 **通用函数：**
 
@@ -733,7 +778,9 @@ grep -rnE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
 
 | 检查项 | 命令 | 检查要点 |
 |--------|------|----------|
-| 字段别名 | `grep -rnE "\bAS\s+[a-zA-Z_][a-zA-Z0-9_]*\s*[,\s)]"` | 确认别名已添加双引号，如 `AS "userName"` |
+| 字段别名 | `grep -rnE "\bAS\s+[a-zA-Z_][a-zA-Z0-9_]*\s*[,\s)]"` | 需检查 `<select>` 的 resultType，只有 Map 类型需加双引号 |
+| resultType="map" | `grep -rn 'resultType="map"' --include="*.xml"` | 辅助检查：查找 map 类型的查询 |
+| resultType="HashMap" | `grep -rn 'resultType="java.util.HashMap"' --include="*.xml"` | 辅助检查：查找 HashMap 类型的查询 |
 | LAST_INSERT_ID | `grep -rn "LAST_INSERT_ID"` | 需扫描 DDL 获取真实序列名，转为 `currval('序列名')` |
 | ON DUPLICATE KEY | `grep -rn "ON DUPLICATE KEY"` | UPDATE 子句中不能包含唯一索引字段，需扫描 DDL 确认 |
 | ORDER BY | `grep -rnE "ORDER\s+BY"` | 确认已添加 NULLS FIRST/LAST |
@@ -750,9 +797,11 @@ grep -rnE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
 ============ DML 迁移校验报告 ============
 
 ✅ 标识符和字符串
-   - 反引号已去掉（表名、字段名不加双引号）
+   - 反引号已改为双引号（有反引号的改为双引号）
+   - 无反引号的标识符保持原样
+   - SQL 关键字字段已用双引号包裹
    - 字符串值已使用单引号
-   - 字段别名已添加双引号（只有别名需要双引号）
+   - 字段别名（需检查 resultType，只有 Map 类型加双引号）
 
 ✅ 通用函数
    - IFNULL 已转为 COALESCE
@@ -788,7 +837,7 @@ grep -rnE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
    - ON DUPLICATE KEY UPDATE 子句中不包含唯一索引字段
 
 ⚠️ 待人工检查项（如有）
-   - 字段别名：确认已添加双引号 AS "aliasName"
+   - 字段别名：需检查 <select> 的 resultType，只有 Map 类型加双引号
    - ORDER BY 语句：确认已添加 NULLS FIRST/LAST
    - GROUP BY 语句：确认非聚合列已用 MAX() 包装
    - SELECT EXISTS：如需返回 0/1 需转为 (EXISTS(...))::int
@@ -827,19 +876,19 @@ grep -rnE "SELECT\s+EXISTS" --include="*.xml" --include="*.java"
 </select>
 
 <!-- ========== GaussDB 转换后 Mapper ========== -->
-<!-- 表名、字段名不加双引号，只有别名加双引号 -->
+<!-- 反引号改为双引号，resultType="map" 时别名加双引号 -->
 <select id="getUserStats" resultType="map">
     SELECT
-        user_id,
-        username,
-        TO_CHAR(create_time, 'YYYY-MM-DD') AS "createDate",
-        COALESCE(nickname, username) AS "displayName",
-        CASE WHEN status = 1 THEN '启用' ELSE '禁用' END AS "statusText",
-        EXTRACT(DAY FROM (NOW() - create_time)) AS "daysSinceCreated",
+        "user_id",
+        "username",
+        TO_CHAR("create_time", 'YYYY-MM-DD') AS "createDate",
+        COALESCE("nickname", "username") AS "displayName",
+        CASE WHEN "status" = 1 THEN '启用' ELSE '禁用' END AS "statusText",
+        EXTRACT(DAY FROM (NOW() - "create_time")) AS "daysSinceCreated",
         (SELECT (EXISTS(SELECT 1 FROM orders WHERE user_id = u.id))::int) AS "hasOrders"
-    FROM user u
-    WHERE status = 1
-      AND create_time &gt;= TO_CHAR(CAST(NOW() AS TIMESTAMP) - INTERVAL '30 DAY', 'YYYY-MM-DD')
+    FROM "user" u
+    WHERE "status" = 1
+      AND "create_time" &gt;= TO_CHAR(CAST(NOW() AS TIMESTAMP) - INTERVAL '30 DAY', 'YYYY-MM-DD')
 </select>
 ```
 
