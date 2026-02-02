@@ -8,6 +8,8 @@ argument-hint: "[Mapper文件或目录]"
 
 将 MySQL 的 DML（数据操作语言）转换为 GaussDB 兼容语法，包括 SELECT、INSERT、UPDATE、DELETE 语句中的函数和语法。
 
+**GaussDB 内核版本：505.2.1**
+
 ## 扫描文件
 
 ```

@@ -6,6 +6,8 @@ argument-hint: "[Mapper文件或目录]"
 
 # MySQL to GaussDB DML 转换（v2）
 
+**GaussDB 内核版本：505.2.1**
+
 ## 快速参考表
 
 ### 引号转换

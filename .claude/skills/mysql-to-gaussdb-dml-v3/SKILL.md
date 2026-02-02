@@ -6,7 +6,7 @@ argument-hint: "[Mapper文件或目录]"
 
 # MySQL to GaussDB DML 转换（v3）
 
-将 MySQL 的 DML（数据操作语言）转换为 GaussDB 兼容语法。
+MySQL DML 转 GaussDB 兼容语法。**版本505.2.1**
 
 ## 扫描文件范围
 
