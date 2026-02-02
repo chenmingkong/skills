@@ -27,7 +27,8 @@ argument-hint: "[Mapper文件或目录]"
 
 | 场景 | MySQL | GaussDB | 说明 |
 |------|-------|---------|------|
-| 表名/字段名 | `` `user` ``, `` `name` `` | `user`, `name` | 去掉反引号，不加双引号 |
+| 表名/字段名（普通） | `` `user` ``, `` `name` `` | `user`, `name` | 去掉反引号，不加双引号 |
+| 表名/字段名（关键字） | `` `order` ``, `` `desc` `` | `"order"`, `"desc"` | 关键字字段用双引号包裹 |
 | 字段别名 | `AS userName` | `AS "userName"` | 只有别名需要加双引号 |
 | 表别名 | `FROM user u` | `FROM user u` | 不需要引号 |
 | 字符串值 | `"张三"`, `"%test%"` | `'张三'`, `'%test%'` | 必须用单引号 |
@@ -77,17 +78,40 @@ argument-hint: "[Mapper文件或目录]"
 
 ### 1.1 标识符（表名、字段名）
 
-**规则：去掉反引号，不加双引号**
+**规则：普通标识符去掉反引号，不加双引号；SQL 关键字字段用双引号包裹**
+
+#### 1.1.1 普通标识符
 
 ```sql
 -- MySQL
 SELECT `id`, `user_name` FROM `user` WHERE `status` = 1;
 SELECT `User`.`Name` FROM `User`;
 
--- GaussDB
+-- GaussDB（去掉反引号，不加双引号）
 SELECT id, user_name FROM user WHERE status = 1;
 SELECT User.Name FROM User;
 ```
+
+#### 1.1.2 SQL 关键字字段（重要）
+
+**当表名或字段名是 SQL 关键字时，MySQL 使用反引号，GaussDB 必须使用双引号。**
+
+常见 SQL 关键字：`order`, `desc`, `group`, `key`, `value`, `type`, `comment`, `index`, `rank`, `level`, `user` 等
+
+```sql
+-- MySQL（关键字使用反引号）
+SELECT `id`, `order`, `desc`, `key`, `value` FROM `order`;
+SELECT t.`id`, t.`group`, t.`type` FROM `config` t WHERE t.`level` = 1;
+
+-- GaussDB（关键字必须使用双引号）
+SELECT id, "order", "desc", "key", "value" FROM "order";
+SELECT t.id, t."group", t."type" FROM config t WHERE t."level" = 1;
+```
+
+**转换规则：**
+- `` `普通字段` `` → `普通字段` （去掉反引号）
+- `` `关键字字段` `` → `"关键字字段"` （反引号改为双引号）
+- 需要识别常见 SQL 关键字并正确转换
 
 ### 1.2 字段别名（只有别名加双引号）
 
@@ -376,11 +400,15 @@ ORDER BY age ASC NULLS FIRST, create_time DESC NULLS LAST
 **标识符和字符串：**
 
 ```bash
-# 检查反引号（应直接去掉，不加双引号）
+# 检查反引号（普通字段去掉，SQL 关键字字段改为双引号）
 grep -rn "\`" --include="*.xml" --include="*.java"
+# 注意：需人工确认是否为 SQL 关键字（order, desc, group, key, value, type 等）
+# - 普通字段：`user_name` → user_name（去掉反引号）
+# - 关键字字段：`order` → "order"（反引号改为双引号）
 
-# 检查双引号字符串值（GaussDB 字符串应用单引号）
+# 检查双引号字符串值（GaussDB 字符串应用单引号，但关键字字段可用双引号）
 grep -rnE "=\s*\"[^\"]+\"" --include="*.xml" --include="*.java"
+# 注意：需区分字符串值和关键字字段
 ```
 
 **通用函数：**
@@ -578,4 +606,47 @@ public class ConfigDTO {
         settings = #{settings}::json   -- String → JSON，转换
     WHERE user_id = #{userId}          -- WHERE 不转换
 </update>
+```
+
+### 示例 3：SQL 关键字字段转换
+
+当表名或字段名是 SQL 关键字时，需要特殊处理：
+
+```xml
+<!-- ========== MySQL（关键字使用反引号） ========== -->
+<select id="getOrderList" resultType="map">
+    SELECT
+        `id`,
+        `order`,           -- order 是 SQL 关键字
+        `desc`,            -- desc 是 SQL 关键字
+        `key`,             -- key 是 SQL 关键字
+        `value`,           -- value 是 SQL 关键字
+        `type`,            -- type 是 SQL 关键字
+        `level`,           -- level 是 SQL 关键字
+        `group`            -- group 是 SQL 关键字
+    FROM `order`          -- order 是 SQL 关键字
+    WHERE `type` = "normal" AND `level` = 1
+    ORDER BY `order` ASC, `desc` DESC
+</select>
+
+<!-- ========== GaussDB（关键字使用双引号） ========== -->
+<select id="getOrderList" resultType="map">
+    SELECT
+        id,                -- 普通字段，不加引号
+        "order",           -- 关键字字段，用双引号
+        "desc",            -- 关键字字段，用双引号
+        "key",             -- 关键字字段，用双引号
+        "value",           -- 关键字字段，用双引号
+        "type",            -- 关键字字段，用双引号
+        "level",           -- 关键字字段，用双引号
+        "group"            -- 关键字字段，用双引号
+    FROM "order"          -- 关键字表名，用双引号
+    WHERE "type" = 'normal' AND "level" = 1
+    ORDER BY "order" ASC NULLS FIRST, "desc" DESC NULLS LAST
+</select>
+```
+
+**常见需要加双引号的 SQL 关键字：**
+
+`order`, `desc`, `asc`, `group`, `key`, `value`, `type`, `comment`, `index`, `rank`, `level`, `user`, `position`, `option`, `select`, `insert`, `update`, `delete`, `where`, `from`, `table`, `column`, `check`, `default` 等
 ```
