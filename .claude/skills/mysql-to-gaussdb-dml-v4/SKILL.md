@@ -142,7 +142,7 @@ MySQL DML 转 GaussDB 兼容语法。**版本 505.2.1**
 | MySQL | GaussDB | 检测模式 |
 |-------|---------|---------|
 | `DATE_FORMAT(d, '%Y-%m-%d')` | `TO_CHAR(d, 'YYYY-MM-DD')` | `DATE_FORMAT\s*\(` |
-| `DATE_ADD(d, INTERVAL n DAY)` | `TO_CHAR(CAST(d AS TIMESTAMP) + INTERVAL 'n DAY', 'YYYY-MM-DD')` | `DATE_ADD\s*\(` |
+| `DATE_ADD(d, INTERVAL n DAY)` | `TO_CHAR(CAST(d AS TIMESTAMP) + INTERVAL 'n DAY', 'YYYY-MM-DD HH24:MI:SS')` | `DATE_ADD\s*\(` |
 | `DATEDIFF(d1, d2)` | `(d1::date - d2::date)` | `DATEDIFF\s*\(` |
 | `UNIX_TIMESTAMP()` | `EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)::INTEGER` | `UNIX_TIMESTAMP\s*\(` |
 | `CURDATE()` | `CURRENT_DATE` | `CURDATE\s*\(` |
@@ -248,7 +248,7 @@ grep -rnE "ORDER\s+BY\|GROUP\s+BY" --include="*.xml"
         EXTRACT(DAY FROM (NOW() - create_time)) AS "daysSinceCreated"
     FROM user u
     WHERE status = 'active'
-      AND create_time &gt;= TO_CHAR(CAST(NOW() AS TIMESTAMP) - INTERVAL '30 DAY', 'YYYY-MM-DD')
+      AND create_time &gt;= TO_CHAR(CAST(NOW() AS TIMESTAMP) - INTERVAL '30 DAY', 'YYYY-MM-DD HH24:MI:SS')
     ORDER BY create_time DESC NULLS LAST
 </select>
 ```

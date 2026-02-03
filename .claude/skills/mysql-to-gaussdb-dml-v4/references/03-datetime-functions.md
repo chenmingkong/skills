@@ -119,8 +119,8 @@ SELECT TO_TIMESTAMP(unix_ts) AS created_at FROM logs;
 
 ## 6. DATE_ADD / DATE_SUB 转换
 
-**规则：`DATE_ADD(date, INTERVAL n unit)` → `TO_CHAR(CAST(date AS TIMESTAMP) + INTERVAL 'n unit', 'YYYY-MM-DD')`**
-**规则：`DATE_SUB(date, INTERVAL n unit)` → `TO_CHAR(CAST(date AS TIMESTAMP) - INTERVAL 'n unit', 'YYYY-MM-DD')`**
+**规则：`DATE_ADD(date, INTERVAL n unit)` → `TO_CHAR(CAST(date AS TIMESTAMP) + INTERVAL 'n unit', 'YYYY-MM-DD HH24:MI:SS')`**
+**规则：`DATE_SUB(date, INTERVAL n unit)` → `TO_CHAR(CAST(date AS TIMESTAMP) - INTERVAL 'n unit', 'YYYY-MM-DD HH24:MI:SS')`**
 
 ```sql
 -- MySQL
@@ -129,9 +129,9 @@ SELECT DATE_SUB(NOW(), INTERVAL 30 DAY) AS last_month FROM orders;
 SELECT DATE_ADD(NOW(), INTERVAL 1 YEAR) AS next_year FROM orders;
 
 -- GaussDB
-SELECT TO_CHAR(CAST(create_time AS TIMESTAMP) + INTERVAL '7 DAY', 'YYYY-MM-DD') AS next_week FROM orders;
-SELECT TO_CHAR(CAST(NOW() AS TIMESTAMP) - INTERVAL '30 DAY', 'YYYY-MM-DD') AS last_month FROM orders;
-SELECT TO_CHAR(CAST(NOW() AS TIMESTAMP) + INTERVAL '1 YEAR', 'YYYY-MM-DD') AS next_year FROM orders;
+SELECT TO_CHAR(CAST(create_time AS TIMESTAMP) + INTERVAL '7 DAY', 'YYYY-MM-DD HH24:MI:SS') AS next_week FROM orders;
+SELECT TO_CHAR(CAST(NOW() AS TIMESTAMP) - INTERVAL '30 DAY', 'YYYY-MM-DD HH24:MI:SS') AS last_month FROM orders;
+SELECT TO_CHAR(CAST(NOW() AS TIMESTAMP) + INTERVAL '1 YEAR', 'YYYY-MM-DD HH24:MI:SS') AS next_year FROM orders;
 ```
 
 **检测模式：** `DATE_ADD\s*\(`, `DATE_SUB\s*\(`
@@ -240,8 +240,8 @@ SELECT EXTRACT(SECOND FROM create_time) AS second FROM orders;
 | `STR_TO_DATE(s, fmt)` | `TO_DATE/TO_TIMESTAMP(s, fmt)` | `STR_TO_DATE\s*\(` |
 | `UNIX_TIMESTAMP()` | `EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)::INTEGER` | `UNIX_TIMESTAMP\s*\(` |
 | `FROM_UNIXTIME(ts)` | `TO_TIMESTAMP(ts)` | `FROM_UNIXTIME\s*\(` |
-| `DATE_ADD(d, INTERVAL n u)` | `TO_CHAR(CAST(d AS TIMESTAMP) + INTERVAL 'n u', 'YYYY-MM-DD')` | `DATE_ADD\s*\(` |
-| `DATE_SUB(d, INTERVAL n u)` | `TO_CHAR(CAST(d AS TIMESTAMP) - INTERVAL 'n u', 'YYYY-MM-DD')` | `DATE_SUB\s*\(` |
+| `DATE_ADD(d, INTERVAL n u)` | `TO_CHAR(CAST(d AS TIMESTAMP) + INTERVAL 'n u', 'YYYY-MM-DD HH24:MI:SS')` | `DATE_ADD\s*\(` |
+| `DATE_SUB(d, INTERVAL n u)` | `TO_CHAR(CAST(d AS TIMESTAMP) - INTERVAL 'n u', 'YYYY-MM-DD HH24:MI:SS')` | `DATE_SUB\s*\(` |
 | `DATEDIFF(d1, d2)` | `(d1::date - d2::date)` | `DATEDIFF\s*\(` |
 | `TIMESTAMPDIFF(DAY, s, e)` | `EXTRACT(DAY FROM (e - s))` | `TIMESTAMPDIFF\s*\(` |
 | `DATE(dt)` | `TO_CHAR(dt, 'YYYY-MM-DD')` | `\bDATE\s*\(` |

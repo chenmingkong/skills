@@ -63,8 +63,8 @@ MySQL DML转GaussDB兼容语法。**版本505.2.1**
 | `DATE_FORMAT(d, '%Y-%m-%d %H:00:00')` | `TO_CHAR(d, 'YYYY-MM-DD HH24:00:00')` |
 | `DATE_FORMAT(d, '%Y-%m-%d %H:%i:00')` | `TO_CHAR(d, 'YYYY-MM-DD HH24:MI:00')` |
 | `STR_TO_DATE(str, '%Y-%m-%d')` | `TO_DATE(str, 'YYYY-MM-DD')` |
-| `DATE_ADD(d, INTERVAL n DAY)` | `TO_CHAR(CAST(d AS TIMESTAMP) + INTERVAL 'n DAY', 'YYYY-MM-DD')` |
-| `DATE_SUB(d, INTERVAL n DAY)` | `TO_CHAR(CAST(d AS TIMESTAMP) - INTERVAL 'n DAY', 'YYYY-MM-DD')` |
+| `DATE_ADD(d, INTERVAL n DAY)` | `TO_CHAR(CAST(d AS TIMESTAMP) + INTERVAL 'n DAY', 'YYYY-MM-DD HH24:MI:SS')` |
+| `DATE_SUB(d, INTERVAL n DAY)` | `TO_CHAR(CAST(d AS TIMESTAMP) - INTERVAL 'n DAY', 'YYYY-MM-DD HH24:MI:SS')` |
 | `DATEDIFF(d1, d2)` | `(d1::date - d2::date)` |
 | `TIMESTAMPDIFF(DAY, start, end)` | `EXTRACT(DAY FROM (end - start))` |
 | `TIMESTAMPDIFF(HOUR, start, end)` | `EXTRACT(EPOCH FROM (end - start))::INTEGER / 3600` |
@@ -250,7 +250,7 @@ FROM orders;
 SELECT TO_CHAR(create_time, 'YYYY-MM-DD') AS date_str,
        TO_CHAR(create_time, 'YYYY-MM-DD HH24:00:00') AS hour_str,
        TO_CHAR(create_time, 'YYYY-MM-DD HH24:MI:00') AS minute_str,
-       TO_CHAR(CAST(create_time AS TIMESTAMP) + INTERVAL '7 DAY', 'YYYY-MM-DD') AS next_week,
+       TO_CHAR(CAST(create_time AS TIMESTAMP) + INTERVAL '7 DAY', 'YYYY-MM-DD HH24:MI:SS') AS next_week,
        EXTRACT(DAY FROM (NOW() - create_time)) AS days_ago,
        EXTRACT(YEAR FROM create_time) AS year
 FROM orders;
@@ -631,7 +631,7 @@ grep -rnE "INSERT\s+INTO|UPDATE\s+\w+\s+SET" --include="*.xml"  # 确认类型�
         EXTRACT(DAY FROM (NOW() - create_time)) AS "daysSinceCreated"
     FROM user u
     WHERE status = 'active'
-      AND create_time &gt;= TO_CHAR(CAST(NOW() AS TIMESTAMP) - INTERVAL '30 DAY', 'YYYY-MM-DD')
+      AND create_time &gt;= TO_CHAR(CAST(NOW() AS TIMESTAMP) - INTERVAL '30 DAY', 'YYYY-MM-DD HH24:MI:SS')
     ORDER BY create_time DESC NULLS LAST
 </select>
 ```
